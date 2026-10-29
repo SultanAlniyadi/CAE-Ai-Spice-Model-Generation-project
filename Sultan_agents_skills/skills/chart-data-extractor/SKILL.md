@@ -1,6 +1,6 @@
 ---
 name: chart-data-extractor
-description: "Digitize PDF datasheet XY curves at source-supported resolution and build an Excel handoff for downstream SPICE model generation, with specifications, conditions, pins, provenance, uncertainty, fitting selections, and validation guidance. Use for datasheet graph extraction or modeling-workbook requests."
+description: "Digitize PDF datasheet XY curves for any product family at source-supported resolution and build an Excel handoff for downstream SPICE model generation, with specifications, conditions, pins, provenance, uncertainty, fitting selections, and validation guidance. Use for datasheet graph extraction or modeling-workbook requests."
 ---
 
 # PDF datasheet to modeling workbook
@@ -12,11 +12,26 @@ deliverable. Do not generate a SPICE model, simulator netlist, external report,
 images, charts, formulas, or macros in the deliverable. Dense samples describe
 the printed curve, not additional measured data or manufacturer accuracy.
 
+## Product-family applicability
+
+Use the supplied datasheet and requested target to determine the manufacturer,
+product family, device variants, packages, grades, modes and relevant behaviors.
+This workflow applies to any product family with datasheet XY curves or modeling
+evidence, including amplifiers, comparators, power devices, regulators, converters,
+sensors and passive components. It has no fixed part number, document revision,
+page/figure count, pinout, test fixture, electrical value or simulator target.
+
+For a selected device, include shared family evidence only where the source
+establishes applicability. For a requested family extraction, retain each
+variant's evidence and pin mapping separately with explicit applicability.
+Examples of quantities, circuits and modeling roles below are conditional on
+the supplied source; they do not establish defaults for another family.
+
 ## Downstream use with the datasheet
 
 The downstream model generator may receive both this workbook and the original
 PDF. Record that source-access expectation in Handoff when confirmed by the user;
-for the MCP6L01 handoff it is confirmed. Keep the workbook independently usable
+otherwise record it as unknown. Keep the workbook independently usable
 for numerical data, units, conditions, quality and fitting selections. PDF access
 does not remove the need for those structured records.
 
@@ -35,9 +50,12 @@ holdouts and source uncertainty in use even when the PDF is available.
 
 ## Scope and source review
 
-Obtain the PDF path, selected device/package, optional graph selections and
-destination from the request. Pages mean physical PDF pages starting at 1. For
-a modeling handoff, scan the complete datasheet even when only some graphs were
+Obtain the PDF path, selected device(s)/family and package(s), relevant grade(s)
+or mode(s), optional graph selections and destination from the request. Derive
+unambiguous selections from the request and source; clarify a target only when
+multiple choices materially change the evidence or pin mapping. Pages mean
+physical PDF pages starting at 1. For a modeling handoff, scan the complete
+datasheet even when only some graphs were
 selected. Without graph selections include all relevant performance graphs, in
 figure order. Ask only for a materially ambiguous graph/device or missing axis
 calibration; record unspecified test details as unknown and continue.
@@ -47,9 +65,10 @@ stress limits, equations, circuits, pins, and behavioral guidance. Retain the
 datasheet title, revision/date, page count, SHA256 hash, and scan dispositions in
 Handoff. Include package-specific thermal data for the selected device; exclude
 mechanical dimensions and unrelated administrative content. Shared family
-electrical evidence may apply to the selected device but variant-specific pins
-must not be substituted. Verify tables, footnotes, package diagrams, and circuit
-connections against rendered source pages. PDF text order does not establish
+electrical evidence may apply to the selected device but variant-specific pins,
+ratings and conditions must not be substituted. Verify tables, footnotes,
+package diagrams and circuit connections against rendered source pages.
+PDF text order does not establish
 topology. Do not infer component values or graph test circuits from appearance.
 
 Identify each selected plot, axes, units, legend, condition labels, and figure.
@@ -59,17 +78,20 @@ finalizing. An identified but unextractable graph still receives its own
 header-only numerical sheet, Metadata/Quality entries, and explicit failure.
 Existing verified extraction workbooks may be reused after checking their source,
 units, conditions, and gaps. Preserve the prior outputs without modification.
+If no relevant XY plots are present, record that scan result in Handoff and
+retain applicable structured evidence without inventing graph sheets or curves.
 
 ## Conditions and source interpretation
 
 Resolve each field independently: series label > graph note > applicable table
 or section default. Explicit sweeps and test purposes override incompatible
-defaults. Do not apply DC midpoint output bias to a pulse-response trace as a
-constant instantaneous output, or RL=10 kΩ as the short-circuit fixture. Store
-source and resolution status for every condition: numeric, swept, relational,
+defaults. A DC bias condition is not a constant instantaneous waveform value;
+a normal-load condition does not define a short-circuit or fault-test fixture.
+Store source and resolution status for every condition: numeric, swept, relational,
 unknown, not_applicable, or conflict. Keep expressions such as `VL = VDD/2` as
-expressions; do not freeze them at one value when supply is swept. Store load
-reference node alongside resistance. Mark inferred mappings and missing stimulus
+expressions; do not freeze them at one value when supply is swept. These symbols
+and relationships apply only when defined by the source. Store load reference
+node alongside resistance. Mark inferred mappings and missing stimulus
 amplitude/edge timing/feedback values explicitly. Graph defaults apply only to
 the fields they state; a figure used for most tests is not proof of every setup.
 
@@ -79,8 +101,9 @@ semantics, inequalities, footnotes and not-tested status by value column. Stress
 ratings do not guarantee functional behavior or authorize destructive fitting.
 Keep conflicting statements as separate records with a shared Quality link and
 explain the preferred evidence; never silently average or overwrite them.
-External protection, bypass, guard rings, and output-isolation resistors remain
-external application recommendations, not inferred internal device components.
+Identify external application components separately from internal device
+behavior. Protection, bypass, guard rings and isolation components are examples;
+their presence and values must come from the selected source.
 
 ## Tools and source inspection
 
@@ -231,8 +254,9 @@ and report X uncertainty so those digits do not imply unsupported accuracy.
 
 ## Workbook interface (schema 1.0.0)
 
-Default destination: `<PDF stem>_<selected device>_model_input.xlsx` in the
-directory containing this file (MCP6L01 uses `_MCP6L01_model_input.xlsx`). Resolve
+Default destination: `<PDF stem>_<selected target>_model_input.xlsx` in the
+directory containing this file. Use a filename-safe device or family label
+derived from the request and record the full selected target in Handoff. Resolve
 explicit relative paths against the working directory. Use exclusive creation
 and `_2`, `_3`, etc. for collisions, including explicit destinations. Save using
 openpyxl, reopen, and remove only an incomplete file created by this run if saving
@@ -255,13 +279,17 @@ Use the following columns as a minimum schema; add explicit explanatory fields
 where source semantics need them. IDs are text and deterministic by source
 figure/series or specification row. Do not use row numbers as IDs. A condition
 group joins all Conditions records for an entity. References must resolve.
+Add explicit Device/Package/Applicability fields to records wherever variants,
+grades or modes differ. Preserve required sheets even when a category has no
+applicable evidence: leave them header-only and record not_applicable or
+not_provided in Handoff, distinguishing an absent feature from missing evidence.
 
 | Sheet | Required record and fields |
 |---|---|
-| Handoff | Record_ID, Category, Key, Value_Text, Value_Number, Units, Source, Status. Device/packages, revision/hash, schema, inventory, coverage, limitations, usage, normalization/weight semantics, scan results and verification results. |
+| Handoff | Record_ID, Category, Key, Value_Text, Value_Number, Units, Source, Status. Manufacturer, product family, selected devices/packages/grades/modes, revision/hash, schema, inventory, coverage, limitations, usage, normalization/weight semantics, scan results and verification results. |
 | Metadata | Curve_ID, Graph_ID, Source_Page, Source_Figure, Source_Title, Graph_Sheet, X_Column, Y_Column, Series_Label, X_Quantity, Y_Quantity, X/Y_Original_Unit, X/Y_Normalized_Unit, X/Y_Normalization_Factor, X/Y_Axis_Scale, Extraction_Method, Layout, Sampling, Condition_Group_ID, Quality_ID, Modeling_Role, Evidence_Class, Sign_Convention, Extraction_Status. |
 | Conditions | Condition_ID, Condition_Group_ID, Entity_Type, Entity_ID, Field, Value, Min, Max, Unit, Normalized_Value/Min/Max, Normalized_Unit, Expression, Status, Resolution, Source_Page, Source_Reference, Notes. One row per field, including unknowns. |
-| Specifications | Parameter_ID, Category, Parameter, Symbol, Minimum, Typical, Maximum, Original_Unit, Normalized_Minimum/Typical/Maximum, Normalized_Unit, Minimum/Typical/Maximum_Status, Sign_Convention, Value_Text, Condition_Group_ID, Footnotes, Applicability, Package, Source_Page/Reference, Quality_ID, Modeling_Use. Split composite impedance into linked parallel R/C records. |
+| Specifications | Parameter_ID, Category, Parameter, Symbol, Minimum, Typical, Maximum, Original_Unit, Normalized_Minimum/Typical/Maximum, Normalized_Unit, Minimum/Typical/Maximum_Status, Sign_Convention, Value_Text, Condition_Group_ID, Footnotes, Applicability, Package, Source_Page/Reference, Quality_ID, Modeling_Use. Split explicitly stated parallel R/C impedance into linked records; preserve other composite quantities and their stated topology. |
 | Pins | Pin_ID, Device, Package, Physical_Pin, Symbol, Logical_Role, Channel, Source_Page, Source_Reference, Verification_Status. Physical order is not a subcircuit interface. |
 | Test_Circuits | Record_ID, Circuit_ID, Record_Type, Name, Component_Type, Value, Unit, Normalized_Value/Unit, Node_1, Node_2, Expression, Measurement, Scope, Status, Source_Page/Reference, Unresolved_Details. Separate components, DUT mappings, equations and missing setup details. |
 | Quality | Quality_ID, Entity_Type/ID, Category, Status, Source_Page/Reference, X_Min/Max, X_Unit, Segment_ID, X/Y_Uncertainty, Uncertainty_Unit, Basis, Description. Include per-curve calibration/geometry, gaps/clipping/overlap, unknown setups and source conflicts. |
@@ -278,11 +306,20 @@ inside Excel so it can be used independently of this conversation.
 
 ## Normalization, uncertainty and fitting
 
-Preserve original units and add normalized values in structured sheets: V, A,
-s, Hz, Ω, F and V/s; temperature remains explicitly °C. Keep voltage p-p
-distinct from peak/RMS, current magnitudes distinct from signed currents, gain/
-rejection in dB, phase in degrees. Noise density is amplitude density V/√Hz
-or A/√Hz, not power spectral density. Examples: µA×1e-6→A; µs×1e-6→s;
+Preserve original units and add normalized values in structured sheets using
+units appropriate to the source quantities, such as V, A, s, Hz, Ω, F, H, W,
+J, C and V/s; temperature remains explicitly °C. Support other electrical,
+thermal, optical or physical quantities with explicit unit and conversion
+semantics. Preserve dimensionless ratios, percentages and source-defined units
+without forcing them into voltage/current quantities. When a conversion is
+unresolved, retain the original value/unit, leave normalized numeric fields
+blank and record the reason. Record conversion offsets or expressions as needed;
+a normalization factor alone cannot describe every unit transformation.
+Keep voltage p-p distinct from peak/RMS and current magnitudes distinct from
+signed currents. Preserve source gain/rejection as linear ratios or dB and label
+phase units explicitly. Distinguish amplitude noise density (such as V/√Hz or
+A/√Hz) from power spectral density (such as V²/Hz or A²/Hz).
+Examples: µA×1e-6→A; µs×1e-6→s;
 nV/√Hz×1e-9→V/√Hz; V/µs×1e6→V/s; mV/mA×1→Ω. Do not convert dB or phase
 without an explicit downstream transformation. Retain repeated X observations.
 
@@ -305,55 +342,50 @@ They are not statistical confidence; downstream curve/behavior weights remain a
 separate choice. Holdout points may have normalized comparison weights but must
 have Fit_Eligible=0 and an explicit validation role.
 
-Suggest gain/phase, DC characteristics, noise, slew and output limits as fitting
-constraints. Default small/large pulse responses and phase-reversal demonstrations
-to validation holdouts; input traces are validation stimuli. For every proposed
-test specify matching conditions, stimulus, response, comparison and tolerance
+Select fitting constraints and validation holdouts from the requested modeling
+objective, source evidence class and behavior of the selected product family.
+Amplifier gain/phase, noise and slew; transistor current/voltage, capacitance and
+charge; regulator regulation and efficiency; and sensor transfer characteristics
+are conditional examples. Do not require an absent behavior or assume every
+transient is a holdout: switching or dynamic curves may be primary fitting
+evidence for some families. Label a curve's role and selection reason explicitly.
+Reserve independent checks where the available evidence allows; input traces
+are validation stimuli rather than device-response fitting data. For every
+proposed test specify matching conditions, stimulus, response, comparison and tolerance
 basis (local extraction envelope or applicable source limits). Typical values
 without bounds are targets, not pass/fail tolerances. Mark incomplete setups
 and unsigned/unknown conventions explicitly. Keep instructions simulator-neutral;
-record ngspice only as a tentative future target. Simulation_Status is
-not_run; do not claim a model or simulation has been validated.
+record a simulator target only when specified by the request, otherwise unknown.
+Simulation_Status is not_run; do not claim a model or simulation has been validated.
 
-## MCP6L01 reference interpretation
+## Datasheet-specific interpretation
 
-For DS20002140D, scan all 42 physical pages and include all 17 Figures 2-1–2-17
-on pages 7–9. Scope pins/thermal data to MCP6L01 SC70 and SOT-23. Verify pins
-1 VOUT, 2 VSS, 3 VIN+, 4 VIN−, 5 VDD on both page 1 and Table 3-1 page 11.
-Pages 3–4 contain DC/AC/temperature tables. Table 1-1 min/max footnote says
-"For design guidance only; not tested." Keep it distinct from typical values.
-Use table IB=2 pA at25°C as preferred nominal evidence while preserving page14
-Section4.6's 1 pA narrative in a conflict record. ZCM/ZDIFF are 10^13 Ω parallel
-5/2 pF, not the concatenated PDF-text numbers. θJA is331°C/W SC70 and256°C/W
-SOT-23. Preserve stress ratings separately from the1.8–6 V operating range.
+Build these interpretations afresh for the supplied document and selected target;
+store the resulting records in Excel rather than adding product-specific facts
+to this reusable skill.
 
-Figure2-3 requires separate path pairs/repeated X. Figures2-1–2-3 are
-representative-part offset observations, not nominal population specifications;
-Figure2-4 is one wafer lot. Figure2-7 is below-rail input conduction through
-ESD protection, separate from normal IB. Figure2-8 uses distinct gain/phase
-Y axes. Figure2-13's mV/mA ratio normalizes to Ω. Figure2-14's source voltage
-ticks are V with20 mV/div; a prior extraction may use mV if labeled consistently.
-Figures2-10,2-14,2-15 are validation holdouts by default.
-
-Visually verify page5 Figure1-1: both RG/RF=100kΩ; positive RG VP→VIN+,
-positive RF VIN+→VDD/2, upper CF6.8pF VIN+→GND; negative RG VM→VIN−,
-negative RF VIN−→VOUT, lower CF6.8pF VIN−→VOUT; CB1/CB2=100nF/1µF
-VDD→GND; RL10kΩ VOUT→VL, CL60pF VOUT→GND. Equation1-1 states
-GDM=RF/RG; VCM=(VP+VDD/2)/2; VOST=VIN−−VIN+;
-VOUT=VDD/2+(VP−VM)+VOST*(1+GDM). VCM is not(VP+VM)/2;
-VOST includes temperature/CMRR/PSRR/AOL effects. The printed mV definition
-requires consistent units before using the equation numerically.
-
-Include pages13–15 guidance: common-mode stage transition near VDD−1.1 V,
-typical rail extension±0.3 V,35mV output headroom under stated load, input
-protection and external D1/D2/resistors, external RISO for large CL (example
->100pF atG+1), and bypass/PCB leakage recommendations. The suggested4% overshoot
-is RISO tuning guidance, not a guaranteed DUT limit. Preserve the Bessel example's
-printed100Hz claim with11.3/20.5kΩ and100/68pF; its component-derived natural
-frequency is about12.7kHz, so flag a source discrepancy instead of correcting it.
-Other-variant unused-amplifier circuits are excluded. Page15's existing model
-was tested in PSpice; compatibility and operation outside specs are not assured.
-Do not fetch/install it as part of extraction.
+- Derive page count, graph coverage, pinouts, packages and thermal data from the
+  actual PDF. Use its figure/table identifiers and physical page references.
+  Check pin/terminal mappings against all applicable diagrams and tables,
+  including exposed pads, shared terminals and channel differences when present.
+- Read value columns, footnotes, test status and measurement conditions together.
+  Distinguish guaranteed limits, design guidance and typical observations using
+  the source's wording. If tables and narrative disagree, preserve both and
+  explain any preferred evidence with a source-cited Quality record.
+- Verify superscripts, prefixes, compound units and component topology visually.
+  PDF text can concatenate resistance/capacitance values or lose exponents.
+  Associate each dual-axis series correctly; preserve scale/division labels,
+  repeated-X paths, sample/population scope and distinct fault/protection regimes.
+- Reconstruct only explicitly shown test-circuit connections and equations.
+  Record reference nodes, signs, units, stimulus and external component values;
+  do not substitute a familiar circuit from another product family. Keep derived
+  consistency checks separate from published values and flag discrepancies
+  without silently correcting the source.
+- Capture applicable operating, application and dynamic guidance, with its
+  stated conditions. Separate tuning recommendations and typical demonstrations
+  from guaranteed device limits. Record any mentioned manufacturer model and
+  its stated simulator/validation limits as source evidence; fetching, installing
+  or validating that model is outside this extraction workflow.
 
 ## Embedded helpers
 
