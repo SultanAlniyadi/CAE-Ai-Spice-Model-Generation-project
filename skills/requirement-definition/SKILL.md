@@ -1,299 +1,384 @@
 ---
 name: requirement-definition
 description: >
-  Extract evidence-backed behavioral SPICE model requirements from operational-amplifier
-  or voltage-supervisor/reset-IC datasheets. Identify the family, extract applicable
-  functional-stage parameters, and write needed/not-needed requirements with modeling
-  techniques plus a separate missing-data report. Use for /requirement-definition.
+  Tag individual source-referenced parameters and behaviors needed to build a
+  behavioral ngspice model
+  from a complete operational-amplifier or voltage-supervisor/reset-IC PDF.
+  Inventory every figure and table as a locator, distinguish needed from unneeded
+  named information, describe ngspice-aware modeling techniques, and report
+  genuinely absent
+  required information separately. Do not extract device values. Use for
+  /requirement-definition.
 ---
 
 # Behavioral SPICE Requirement Definition
 
 ## Scope and Source Review
 
-Extract parameters and write Markdown reports only. Do not generate a SPICE model,
-fit a model, run simulations, or claim verified model behavior. Behavioral stages
-use controlled sources, impedance elements, clamps, state, and timing rather than
-transistor-level internal data.
+This is a selection and handoff, not data extraction. Identify the information
+needed for a pin-level behavioral ngspice subcircuit using supported controlled
+sources, loading, clamps, states and timing. Do not make a netlist, fit or
+simulate a model, make a workbook, or claim verified behavior.
 
-1. Use the supplied PDF path or pasted datasheet text, selected part/package/grade,
-   modeling objective, and destination. Read the full accessible source, including
-   tables, figures, footnotes, functional descriptions, and pin definitions.
-2. Record manufacturer, exact part/variant, revision/date, source path, package,
-   pin functions, supply configuration, and applicable conditions. Do not mix
-   threshold options, channels, grades, test loads, or typical and guaranteed limits.
-3. Identify the family from functional description, pins, and characteristics:
-   op-amp (offset, open-loop gain, bandwidth, slew) or supervisor/reset IC
-   (voltage detection, reset threshold, delays, watchdog). Execute only the matching
-   conditional procedure below, not both.
-4. Return missing/inaccessible source, unresolved part selection, ambiguous family,
-   or unsupported family to the parent as a precise blocker. Do not ask the user
-   directly or guess. For partial pasted text, report the coverage limitation;
-   do not claim a parameter is absent from the full datasheet without reviewing it.
-5. Filter requirements to this part and the requested analyses. If no objective is
-   supplied, explicitly label a provisional nominal pin-level DC/AC/transient scope
-   as a scope assumption, not as device evidence. Include noise or temperature
-   requirements when relevant; identify omissions and their fidelity limits.
+1. Require a complete, readable datasheet PDF. Read every page, including all
+   figures, tables, captions, footnotes, functional descriptions, pin definitions
+   and operating constraints. Pasted text or excerpts may clarify a request but
+   are not a substitute for the PDF. If pages or sources cannot be inspected well
+   enough to inventory them and select the part accurately, return a blocker to
+   the parent without writing either report. Do not treat unreadable information
+   as absent.
+2. Identify the manufacturer, PDF identity/revision, exact selected part,
+   variant, package, grade, channel or threshold option, and requested scope.
+   Record reviewed-page coverage. Do not mix variant options, channels, grades,
+   test configurations or different limit classes. If the selection or family
+   cannot be resolved from the source and request, return a blocker to the parent.
+3. Detect the family from functional description, pins and characteristics:
+   operational amplifier or voltage supervisor/reset IC. Follow only the
+   corresponding conditional procedure below. Return unsupported families to
+   the parent without inventing a generic procedure.
+4. Respect the requested analyses and pin-level behaviors. When no scope is
+   supplied, explicitly mark provisional nominal DC/AC/transient coverage as a
+   `SCOPE ASSUMPTION`, not a datasheet fact. Include noise or temperature needs
+   only where requested or relevant to the stated scope; note the fidelity cost
+   of omitting them without inventing a requirement for an absent feature.
+5. Before writing, verify that the PDF can support a complete source inventory
+   and that both destination filenames are available. Return missing/inaccessible
+   PDF, incomplete coverage, unresolved selection, and output conflicts to the
+   parent, not directly to the user. Write neither report when blocked.
 
-## Evidence Rules
+## Tagging and Evidence Rules
 
-| Status | Meaning and routing |
+For the selected part and scope, register **every figure and table** in the PDF,
+including packaging, stress, other-variant and otherwise irrelevant sources. Use
+the PDF's own page and figure/table identifier (or a descriptive locator if it
+has no identifier). Order the single inventory by page, then source identifier.
+Sources are locators, **not** the unit of the needed/not-needed decision. Within
+each source, tag every distinct named parameter, curve/series, timing event,
+pin fact, functional behavior or other information item relevant to deciding
+the handoff; split mixed sources into separately named items. Do not replace
+parameter names with "electrical characteristics," "whole table," or "all
+curves." For unrelated administrative or mechanical material, name the actual
+category of information excluded rather than inventing electrical parameters.
+Give each item a tag, short reason and route:
+
+| Parameter tag | Meaning and route |
 |---|---|
-| EXTRACTED | Explicit table/text specification; main report with table/page or text/page citation |
-| GRAPH ONLY | Available only in a figure; main report with figure/page, conditions, approximate read and uncertainty |
-| DERIVED | Computed from supported source values; main report with formula, units, input citations and applicability limits |
-| NOT SPECIFIED | Required applicable value genuinely absent after full source review; missing-data report only |
+| `NEEDED` | This named item applies to the selected part and scope; route to Information Needed for downstream extraction. It was **not** extracted here. |
+| `NOT NEEDED` | This named item is inapplicable to this part or outside the requested modeling scope; route to Information Not Needed with a specific reason. |
 
-Preserve min/typ/max separately, units, temperature, supply, load, frequency,
-direction, polarity, and test configuration. Typical values are not guarantees.
-Do not fabricate precision for graph reads. If a graph is unreadable, keep the
-GRAPH ONLY item in the main report with value unresolved and return the reading
-blocker; it is not datasheet-absent. Do not count unresolved readings as extracted.
+For example, an electrical table may have propagation delay tagged `NEEDED`
+and a separately named input-low voltage tagged `NOT NEEDED` **only if** that
+input threshold is genuinely irrelevant to the selected part and requested
+behavior. This example is not a rule that either parameter is always needed or
+unneeded: for a supervisor with a manual-reset input, its input-low voltage may
+be needed to define input recognition. Decide independently for each parameter.
+Different rows/curves/variants/conditions may need distinct tags even when they
+share a source. If the same parameter appears in multiple sources, cite each
+applicable source without treating duplicates as different modeling requirements.
 
-Keep unknowns unknown. Do not supply generic typical defaults, infer zero from
-silence, or treat absolute-maximum stress ratings as functional operating ranges,
-threshold tolerances, drive-current limits, or model targets. User-authorized model
-assumptions must be separately labeled `USER-AUTHORIZED MODEL ASSUMPTION` in the
-modeling discussion with authorization, rationale and limitations; they are not
-one of the four evidence statuses and do not remove a NOT SPECIFIED gap.
+Use non-numeric qualifiers such as selected variant, channel, direction, limit
+class, pin, state, test-condition *type*, and applicable footnote. Do not copy
+test conditions, limits, points, or plotted coordinates. Identify relevant
+prose, pin definitions, functional operating constraints and notes as named
+information needs with page/section locators. Record irrelevant prose only when
+it explains an exclusion; do not treat pin functions or functional operating
+limits as automatically irrelevant.
+
+`NOT SPECIFIED` is reserved for required, applicable named information genuinely
+absent after the **complete** PDF review. Put it only in the missing-data
+report. A graph with the needed curve present is available for downstream
+extraction even if no table gives the information; tag its named curve `NEEDED`
+in the main report. A missing parameter for a selected variant may still be
+absent even if another variant has it. An unreadable source or ambiguous part is a blocker,
+not `NOT SPECIFIED`. A feature absent from the part or omitted from scope
+does not create a missing-data entry.
+
+Never transcribe, approximate, derive, calculate, digitize, or report any
+device-specific electrical or graph values. Never supply numeric formulas,
+sample values, replacement numbers, numeric test conditions, or simulator
+validation claims. Figure/table IDs, page numbers, part/package/revision
+identifiers, parameter and condition names, and report counts are locators,
+not modeling data. Do not convert stress ratings into functional limits, infer
+zero or symmetry from silence, or assert a characteristic from a technology
+label. Separately label authorized modeling assumptions with their origin and
+limitations; they do not change a `NOT SPECIFIED` item into PDF evidence.
 
 ## Conditional Procedure: Operational Amplifier
 
 ### Identification
 
-Record voltage-feedback (VFB) versus current-feedback (CFB), CMOS/bipolar/JFET
-input type if documented, rail-to-rail input/output claims and their conditions,
-amplifier count, pin mapping, shutdown/enable if present, and supply operating
-range/current. Specify whether the requirements cover one channel or the package.
-Do not infer bias currents or rail behavior from process/topology names alone.
+Tag documented feedback topology (voltage or current feedback), input
+technology, rail-to-rail claims and qualifiers, amplifier count, pin mapping,
+shutdown or enable behavior if present, and functional supply configuration.
+Specify whether the requested behavior is for one selected channel or the
+whole package. Do not infer input currents or rail behavior from topology or
+process claims alone; exclude other-channel sources only if they cannot inform
+the selected channel.
 
-### Stage 1: Input
+### Input Stage
 
-| Parameters | Units | Behavioral use |
-|---|---|---|
-| Vos; dVos/dT | V; V/degC | Series input offset source and supported temperature dependence |
-| IB+, IB-, Ios and temperature dependence | A | Input current sources; retain sign/reference conventions |
-| Rin_diff, Rin_cm | ohm | Differential/common-mode loading with documented per-pin definitions |
-| Cin_diff, Cin_cm | F | Input capacitive loading with documented per-pin definitions |
-| VCMR_low, VCMR_high | V | Valid common-mode range and supported out-of-range behavior |
+Look for input offset and drift, input bias and offset currents with sign and
+reference conventions, differential/common-mode resistance and capacitance
+with pin definitions, common-mode operating range, and documented behavior
+outside it. Tag input crossover, phase reversal, protection and overload
+behavior only where stated or needed. A range limit does not prove a hard clamp
+or phase reversal; an unsigned current difference does not define each pin's
+current direction. Identify relevant curves and conditions by name, not values.
 
-Do not assign individual IB+ and IB- signs from an unsigned Ios alone. Record any
-input crossover, phase reversal, protection, or overload behavior actually stated.
-A range limit alone does not prove hard clamping or phase reversal.
+### Gain and Frequency Stage
 
-### Stage 2: Gain and Frequency
+Look for open-loop gain, gain-bandwidth or unity-gain response, phase margin
+with noise gain and load qualifiers, stable-gain restrictions, open-loop
+gain/phase plots, and load-dependent stability evidence. Name the source
+information a downstream builder would need to choose pole/zero behavior:
+low-frequency gain, actual loop crossover and phase behavior, feedback topology,
+compensation and test configuration. A simple dominant-pole or two-pole
+approximation is only a conditional modeling technique; do not infer a pole
+    from phase margin alone, equate unity frequency with gain-bandwidth without
+support, or force voltage-feedback assumptions onto current-feedback parts.
+For current feedback, look for transimpedance and feedback-resistor-dependent
+response instead. Flag unsupported pole shaping as a fidelity limit or, if
+required information is absent, a missing-data entry; do not compute poles.
 
-Extract DC Aol (dB or V/V), GBWP and unity-gain frequency fu (Hz), phase margin PM
-(degrees) at the stated noise gain/load, minimum stable gain, open-loop gain/phase
-versus frequency, and supported poles/zeros or load-stability conditions.
+### Slew and Output Stage
 
-Convert `Aol_linear = 10^(Aol_dB/20)`. For approximately dominant-pole VFB response,
-`fp1 approximately GBWP/Aol_linear` (Hz) is a DERIVED approximation, not a universal
-rule. GBWP and fu need not coincide for compensated/non-unity-stable or CFB parts.
-For a two-pole VFB approximation with first-pole phase near -90 degrees at the
-actual unity loop crossover fcross, `fp2 approximately fcross*tan(PM)` for
-`0 < PM < 90 degrees`. State the assumed two-pole/no-zero response and actual
-test conditions. Do not use `GBWP*tan(90 degrees - PM)` or infer a single pole
-solely from PM = 90 degrees. CFB requires source-supported transimpedance and
-feedback-resistor response; do not force VFB derivations onto it. If prerequisites
-are absent, leave pole locations unresolved and document the gap.
+Look for directional slew behavior, output swing or rail headroom by load,
+source/sink functional drive capability, output impedance with frequency and
+loop-state qualifiers, settling/overload recovery and capacitive-load behavior
+when relevant. Source/sink asymmetry and supply/load conditions matter. A
+short-circuit test does not establish a guaranteed linear drive limit. If a
+downstream slew-limited stage is proposed, name its scaling and dynamic-state
+evidence needs; do not calculate an internal charging current. Distinguish
+open-loop output resistance from load regulation near saturation. Neither a
+gain/bandwidth/input-capacitance combination nor a headroom slope establishes
+open-loop output resistance without architectural evidence.
 
-### Stage 3: Slew and Output
+### Common-Mode and Supply Rejection Stage
 
-Extract rising/falling SR (V/s), Voh/Vol or rail headroom versus load (V), source/sink
-short-circuit currents (A), functional drive limits, output impedance versus
-frequency and open-/closed-loop conditions (ohm), settling/overload recovery when
-relevant, and load capacitance conditions.
-
-Use slew charging/discharging currents with `I_slew = SR*C_slew` only with the
-model's internal-to-output scaling stated. Output clamps and current limiting
-must retain supply/load dependence and source/sink asymmetry. A short-circuit
-test is not necessarily a guaranteed linear drive capability.
-
-Require direct evidence for open-loop output resistance Ro. The expression
-`Aol_linear/(2*pi*GBWP*Cin_diff)` has resistance units but no justified general
-relationship to output resistance; do not use it. A headroom-versus-current slope
-may yield a local incremental saturation/load-regulation resistance
-`abs(delta Vout/delta Iout)` under matched conditions, not open-loop Ro. Label it
-accordingly and do not substitute it for Ro without an evidenced architecture.
-
-### Stage 4: CMRR and PSRR
-
-Extract DC CMRR/PSRR (dB), frequency response and -3 dB rejection corners (Hz),
+Look for common-mode and supply rejection, frequency-dependent rejection,
 positive/negative supply distinctions, measurement definitions and reference
-conditions. Input-referred error magnitude is `Vcm/10^(CMRR/20)` or
-`Vripple/10^(PSRR/20)` when those definitions apply; sign/phase may be unknown.
-Rejection decreasing with frequency means error coupling increases: do not put
-an unqualified low-pass pole on error coupling and thereby improve rejection.
-Recommend source-supported pole/zero shaping with finite high-frequency bounds.
+conditions. Rejection falling with frequency implies increasing error coupling;
+do not propose shaping that instead improves rejection at high frequency.
+List the transfer and sign/phase evidence needed for an input-referred error
+stage. Do not calculate error amplitudes or corner frequencies.
 
-### Stage 5: Noise
+### Noise Stage (when relevant)
 
-Extract voltage-noise white density en (V/sqrt(Hz)), current-noise density in
-(A/sqrt(Hz)), 0.1-10 Hz voltage noise (V peak-to-peak), frequency plots and flicker
-corner fc (Hz). Under the white-plus-1/f density approximation,
-`en_total = en*sqrt(1+fc/f)` and the sqrt(2)-times-white-floor crossing identifies
-fc; cite the graph and approximation. Peak-to-peak noise is not directly RMS
-without statistical/bandwidth assumptions. Spectral density is not a time-domain
-noise amplitude. State simulator noise-source/build support requirements rather
-than assuming a generic B-source or VNSE exists. Source-impedance current noise
-becomes comparable around `abs(Zsource) = en/in` under compatible conditions.
+Look for input voltage/current noise density, low-frequency noise, spectral
+curves, flicker behavior, bandwidth/measurement qualifiers and source-impedance
+context. Spectral density is not a transient amplitude and peak-to-peak noise
+does not by itself specify RMS behavior. Name the noise spectrum and simulator
+noise-source support needed downstream, without reading curve points or
+deriving a flicker corner. Do not presume a particular behavioral source
+supports noise in the target simulator.
 
-### Op-Amp Modeling Guidance and Gaps
+### Op-Amp Modeling Techniques and Gaps
 
-Map input sources/loading, finite-gain controlled-source gain networks, RC poles,
-slew limiting, load-dependent clamps/current limits, rejection error injection,
-and noise shaping to this part's actual values. Temperature dependence and
-enable states require evidence. Numerical convergence aids are implementation
-choices, not extracted device parameters. Mark unsupported stages unpopulated.
+Map applicable input sources/loading, finite-gain controlled sources, dynamic
+response shaping, slew limiting, load-dependent clamps or current limiting,
+rejection error injection and noise shaping to **named source inputs**. Prefer
+ngspice core controlled sources and explicit R/C dynamic stages where suitable;
+do not suggest a generic E-source `LAPLACE` element. `s_xfer` requires XSPICE
+and is only a conditional option if the target build and analyses support it.
+For noise distinguish ngspice `.noise`-recognized elements from deterministic
+behavioral or transient noise sources; do not assume they are interchangeable.
+Describe dependencies, ngspice support, fidelity limits, and stages blocked for
+lack of evidence, without values or implementation equations. Temperature behavior
+and enable states need source support. Convergence aids are implementation
+choices, not datasheet characteristics.
 
-Assess gaps against the requested scope: GBWP/response can be CRITICAL for AC;
-Aol, offset/bias, VCMR, slew, swing/current limit and DC rejection are commonly
-HIGH when those behaviors matter. Input loading, Ro, rejection roll-off,
-temperature drift and flicker/current noise can be MEDIUM or HIGH depending on
-the circuit; white noise is HIGH for noise analysis. Seek manufacturer data,
-supported curves, or characterized measurements rather than inserting defaults.
+Assign missing-information priority based on requested scope: frequency
+response may be CRITICAL for AC; gain, input error, common-mode range, slew,
+swing and rejection may be HIGH when their behavior matters. Input loading,
+output resistance, rejection roll-off, drift and noise importance depends on
+the analyses. Ask for manufacturer evidence or characterization rather than
+defaults; do not create gaps for unrequested noise or temperature fidelity.
 
 ## Conditional Procedure: Voltage Supervisor / Reset IC
 
 ### Identification
 
-Record threshold channels and selected option, each sense/supply pin, fixed versus
-adjustable thresholds, push-pull/open-drain/open-collector outputs, reset polarity,
-truth table, MR presence, watchdog presence/type and enable controls. Extract
-per-channel requirements and combined-reset logic. Do not equate rising/falling
-threshold direction with assert/deassert: undervoltage normally asserts on a
-falling crossing and releases on rising; use the actual device truth table.
+Tag selected threshold options and channels, sense and supply pins, fixed or
+adjustable configuration, reset output topology/polarity, truth table, and
+documented manual reset, watchdog and enable features. Name per-channel
+requirements and combined-reset logic only where applicable. Crossing
+direction is not the same as assert/deassert: use the device's actual truth
+table instead of assuming polarity or event mapping.
 
-### Stage 1: Threshold Comparator
+### Threshold Comparator Stage
 
-Extract rising Vth_rise and falling Vth_fall (V), hysteresis Vhys (V), threshold
-accuracy/min/typ/max (% or V), drift (ppm/degC or V/degC), sense reference and
-divider/loading specifications for adjustable devices. Derive
-`Vhys = Vth_rise - Vth_fall` only for matching conditions and channel definitions.
-If one directional threshold and defined hysteresis are provided, derive the
-other only using the stated hysteresis convention. A single threshold does not
-establish hysteresis symmetry, zero hysteresis, or either unreported crossing.
-Leave these unknown and report applicable gaps. Use a hysteretic comparator with
-explicit state storage/initialization supported by the simulator; do not recommend
-an algebraically self-referencing behavioral voltage source as a portable latch.
-Temperature-dependent reference and tolerance sweeps require functional evidence.
+Look for rising/falling thresholds, hysteresis and convention, threshold
+accuracy and drift, sense reference, and adjustable-device divider/loading
+information. Tag only rows/curves and footnotes for the selected option and
+channels. A single threshold does not establish an unreported crossing, zero
+hysteresis or symmetry. If both crossings or a documented convention are
+required to model behavior, identify those inputs for downstream analysis;
+do not derive a threshold. A hysteretic comparator needs ngspice-supported
+state and initialization, not an unevidenced algebraic latch. Temperature
+and tolerance sweeps depend on functional evidence.
 
-### Stage 2: Timing and Delay
+### Timing and Delay Stage
 
-Extract assert delay td_assert, release delay td_deassert, POR hold time tPOR,
-minimum pulse/glitch rejection, overdrive dependencies, startup/ramp-rate limits,
-timer-programming relationships, retrigger behavior and timing conditions.
-Do not add POR and release delays if the datasheet defines them as the same event.
-RC timers/one-shots or behavioral event timing must match separate assert/release
-paths and initial states. For an evidenced exponential timer,
-`td = -R*C*ln(1 - Vtrip/Vfinal)` applies only for zero initial voltage charging
-toward Vfinal; use the actual initial/final voltages otherwise. Initialization
-must reflect documented startup behavior, not an arbitrary .ic claiming fidelity.
+Look for assertion and release timing, startup/power-on reset behavior, glitch
+rejection, overdrive and ramp-rate dependence, programmable timing,
+retriggering and initial-state definitions. Keep distinct timing events
+distinct; do not add delays that describe the same event. A timer or event-
+based approach needs documented paths and initial conditions. Name timer
+relationship evidence without calculating RC values, delays or trip levels.
+An arbitrary simulator initialization does not establish startup fidelity.
+Prefer a core ngspice analog state/timing realization where evidence supports
+one; XSPICE event or hysteresis code models are conditional on an enabled build.
 
-### Stage 3: Output Driver
+### Output Driver Stage
 
-Extract Vol at Iol, Voh at Ioh (push-pull only), functional source/sink limits,
-off-state Ileak, Cout if relevant, low-supply reset-valid voltage, output supply
-and power-down state. Voh/Ioh are not requirements for an open-drain high state;
-the external pull-up sets it. Do not interpret a logic-level test current as a
-current limit. `Vol/Iol` gives only an effective on-resistance approximation at
-that operating point; a maximum Vol yields a bound, not a typical resistance.
-Use finite output impedance, supported current limits and leakage in controlled
-drivers or switches; push-pull source and sink resistances need separate evidence.
+Look for output-state voltage under load, functional source/sink behavior,
+off-state leakage, output capacitance where relevant, low-supply reset validity,
+output-supply behavior and power-down state. For open-drain outputs an external
+pull-up establishes the high state; do not require a driven high-state
+specification. A logic-level test current is not proof of a current limit.
+For downstream finite-impedance drivers, distinguish load-point behavior from
+functional limits; do not calculate on-resistance or assume symmetric drive.
 
-### Stage 4: Supply and Sense
+### Supply and Sense Stage
 
-Extract functional Vcc_min/Vcc_max, Iq versus supply/temperature/state, documented
-internal logic-valid threshold if present, reset behavior below valid supply,
-and Rin_sense/Cin_sense or input leakage for adjustable/sense pins. Supply
-operating minimum need not equal reset-valid or internal comparator thresholds.
-Gate state/driver behavior only according to documented power-down behavior;
-do not invent a secondary comparator. Use supply current sources and sense
-loading only where supported. Keep stress ratings out of functional targets.
+Look for functional supply operating range, supply current by state and
+conditions, documented low-supply validity behavior, sense pin loading and
+leakage. Supply operating minimum does not by itself define reset validity or
+an internal comparator threshold. Gate the proposed behavior only as the
+functional description supports it; do not invent a secondary comparator or
+use absolute-maximum stress ratings as functional targets.
 
-### Optional MR and Watchdog
+### Optional Manual Reset and Watchdog
 
-If MR is absent, omit MR requirements, gaps and techniques. If present, extract
-polarity, VIL/VIH or actual directional thresholds, hysteresis if specified,
-internal pull-up Rmr or current, minimum assert pulse tmr, debounce/filtering,
-assert propagation and release interaction. Logic VIL/VIH bounds do not prove
-precise comparator crossings. Map supported MR detection/filtering into reset logic.
+If manual reset is absent from the selected part, omit its requirements, gaps
+and techniques. If present, look for pin polarity, logic-level bounds or
+directional crossing evidence, documented hysteresis, pull-up, minimum pulse,
+debounce/filtering, propagation and release interaction. Logic-level bounds
+do not prove exact comparator crossings. Name the inputs needed for reset
+logic without making up thresholds.
 
-If watchdog is absent, omit its requirements, gaps and techniques. If present,
-extract twdt, watchdog reset pulse width tw_reset, WDI valid levels/edges/pulse
-width, window limits if applicable, startup delay, enable/disable behavior,
-retrigger conditions and reset interactions. Recommend a retriggerable timer or
-windowed state machine, not an unconditional oscillator that ignores WDI rules.
+If watchdog is absent from the selected part, omit its requirements, gaps and
+techniques. If present, look for watchdog timeout/reset pulse, valid input
+levels and edges, windowing where applicable, startup delay, enable behavior,
+retrigger rules and reset interactions. A retriggerable timer or windowed state
+machine must follow the documented input rules, not run unconditionally.
+Sources dedicated to an absent feature are still inventoried with their named
+information tagged `NOT NEEDED`.
 
-### Supervisor Modeling Guidance and Gaps
+### Supervisor Modeling Techniques and Gaps
 
-Map source-backed thresholds/state, independent delays/POR, polarity/output
-driver, supply behavior and only present MR/watchdog functions to this part.
-Parameterization across variants must not silently mix threshold options.
-Convergence smoothing is a numerical implementation choice and must not replace
-specified glitch or timing behavior. Identify simulator support for state/timing.
+Map evidenced thresholds/state, separate delays and startup behavior, output
+polarity/driver, supply behavior and only present manual reset/watchdog
+functions to candidate techniques and named inputs. Note dependencies,
+ngspice state/timing support, fidelity limits and evidence-blocked stages.
+Do not assume a generic event scheduler, native digital state machine, or
+cross-dialect behavioral syntax works in core ngspice; distinguish analog
+state/capacitor/switch paths from XSPICE-dependent event code models.
+Convergence smoothing cannot replace documented glitch or timing behavior.
+Never mix threshold options across variants.
 
-Missing decision thresholds are CRITICAL for reset detection; hysteresis/release
-crossings, delays/POR, output levels and low-supply behavior are commonly HIGH
-for reset analysis. Drift/accuracy, loading, current/leakage and Iq severity depend
-on temperature, interface and power objectives. MR detection and watchdog timing
-are HIGH when those functions are present and required. Obtain functional data
-or measurements; do not default hysteresis, drift, pull-up, output headroom or
-drive limits, and do not use absolute maxima as workarounds.
+Missing decision thresholds may be CRITICAL for requested reset behavior;
+crossings, timing, driver levels and low-supply behavior may be HIGH. Drift,
+loading, leakage and supply current priority follows the scope. Manual reset
+and watchdog evidence is important only when those features exist and matter
+to the analysis. Seek functional data or measurements rather than defaulting
+to unstated hysteresis, pull-up or drive behavior.
 
 ## Report Contract
 
-Write both files in the caller's destination or current working directory. Check
-existing outputs before writing; return an overwrite conflict to the parent rather
-than silently replacing user files. Use the exact selected part in filename-safe
-form and report any filename normalization.
+Write both Markdown reports in the caller's destination, or the current
+working directory if none was specified. Check for **either** existing output
+before writing; on any collision return an overwrite blocker to the parent
+without writing or replacing either file. Do not migrate old artifacts. Use
+the exact selected part in filename-safe form and report any normalization.
 
-`[PartNumber]_behavioral_spice.md` has identification/source/scope metadata followed
-by exactly three top-level report sections (stage subsections may appear within them):
+`[PartNumber]_required_data_for_behavioral_spice.md` starts with metadata:
+selected part/family/variant/package/grade/channel, manufacturer, PDF path and
+identity/revision (or not indicated), requested scope and explicitly labeled
+scope assumptions, and complete reviewed-page coverage. Directly under that
+metadata, include a **single chronological source inventory** of every figure
+and table, including sources with no needed content. The inventory is not an
+additional top-level report section. Each row is one named information item
+(or one named category of non-model material); repeat a source locator for
+multiple items. Use columns such as:
+
+| Page and source ID | Named parameter / behavior / content | Parameter tag | Non-numeric qualifiers | Reason / route |
+|---|---|---|---|---|
+
+For mixed sources, put needed and unneeded parameters on separate rows. Name
+each distinct electrical parameter, direction, timing event, curve or series
+that has a different decision; retain variant, channel, condition type, limit
+class and footnote qualifiers where applicable. Do not use `INCLUDE`, `PARTIAL`
+or `EXCLUDE` as the decision for a source. Sources covering only other variants
+still get one or more named `NOT NEEDED` rows with a selection reason. Group
+purely mechanical or administrative content by named category if appropriate,
+but do not collapse electrical parameters into a category. Relevant prose and
+pin facts must also receive individual tags in the sections below (and may be
+listed in the inventory if helpful). The inventory is an evidence coverage
+index, not a substitute for the parameter-focused sections.
+Avoid extra `##` headings in metadata and inventory. Follow with exactly
+three top-level report sections, in this order:
 
 1. `## Information Needed for the Behavioral Model`
 2. `## Information Not Needed for the Behavioral Model`
 3. `## Modeling Techniques`
 
-Section 1 includes all applicable EXTRACTED, DERIVED and GRAPH ONLY requirements:
+In Information Needed, list every distinct `NEEDED` named parameter/behavior
+by stage with source/page locators, applicable non-numeric qualifiers and the
+reason it matters for the requested model. Tag needed prose, individual pin
+facts, relevant footnotes and functional operating constraints by page/section
+too. Explain that `NEEDED` means **extract downstream**, not extracted now.
+A figure's needed curves stay here even if no table includes them. Order cited
+sources by page and identifier within each stage where possible; the unified
+inventory gives the authoritative PDF-wide source order.
 
-| Parameter | Symbol | Min | Typ / Approx | Max | Unit | Conditions | Stage / Use | Status | Source / Formula / Uncertainty |
-|---|---|---|---|---|---|---|---|---|---|
+In Information Not Needed, list every `NOT NEEDED` named item from the
+inventory, with the same locator and a short scope/variant/function reason;
+include parameter-level prose exclusions when relevant. Do not simply say
+"unused rows" or "table excluded" where named electrical parameters exist.
+Group irrelevant ordering, layout or administrative material by content type
+when useful. Do not categorically exclude pin descriptions, operational limits
+or application-derived functional evidence; first test relevance to this part
+and scope. `NOT NEEDED` is not a synonym for `NOT SPECIFIED`.
 
-Sort by source: Table (and explicit text specifications) first, Derived next,
-Fig X (graph) last; retain stage order within each group. Cite table/text page,
-figure/page or derivation inputs. Graph-only values belong here, never in the
-missing-data report. Do not label a max-only value as typical.
+In Modeling Techniques, identify **ngspice as the primary target** and map
+applicable stages to qualitative behavioral techniques, named needed inputs
+and page/figure/table references. For each technique state a plausible ngspice
+implementation path (core subcircuit primitives such as supported controlled
+sources, R/C state and switches where sufficient; otherwise a clearly
+conditional XSPICE/build- or version-dependent path), required analyses,
+dependencies, fidelity limitations and stage(s) blocked pending missing
+evidence. Do not assume another SPICE dialect's `LAPLACE`, event, hysteresis,
+lookup or noise syntax is native ngspice. If the target ngspice version/build
+is unknown, do not promise XSPICE or optional features; flag version/build
+and syntax verification for downstream implementation. If a core path cannot
+cover requested behavior, mark the technique conditional or blocked rather
+than pretending it works. Separately label authorized assumptions with origin
+and limitations. Do not quote device values, give sample numbers or numeric
+equations, include graph read-offs or derived results, make a netlist, or
+claim a technique has been validated by simulation.
 
-Section 2 lists only present but irrelevant content with reasons: packaging,
-ordering, soldering, thermal/process/ESD/stress data or application/layout details
-not used in the selected behavioral scope. Pin functions, functional operating
-limits and application-derived functional evidence are not categorically irrelevant.
+`[PartNumber]_missing_data.md` contains only applicable required information
+that is `NOT SPECIFIED` after the full readable PDF review. Identify the
+selected part and scope, then use a checklist such as:
 
-Section 3 maps each applicable stage to recommended SPICE elements and actual
-extracted values/citations, qualifications and simulator support. Identify which
-techniques cannot yet be populated, fidelity omissions, and separately labeled
-user-authorized assumptions. Do not generate a netlist or claim simulation.
-
-`[PartNumber]_missing_data.md` contains ONLY applicable required NOT SPECIFIED
-parameters genuinely absent from the reviewed datasheet:
-
-| Missing Parameter | Status | Stage | Behavior / Analysis Affected | Severity | Workaround / Evidence Needed |
+| Missing named information | Status | Modeling stage | Affected behavior / analysis | Priority | Evidence needed / possible characterization |
 |---|---|---|---|---|---|
 
-Use CRITICAL (core requested behavior cannot be represented), HIGH (materially
-misleading results), MEDIUM (limited first-pass fidelity), LOW (secondary effect
-for the stated scope). Severity is scope-dependent, not a device fact. Workarounds
-request manufacturer evidence, measurements or parent approval of an explicitly
-unverified assumption; never invent a replacement value. If no applicable data
-is missing, explicitly state that. Reading blockers are reported separately to
-the parent, not disguised as NOT SPECIFIED.
+Use `CRITICAL` when core requested behavior cannot be represented; `HIGH` for
+material risk to requested results; `MEDIUM` for limited first-pass fidelity;
+`LOW` for secondary effects. Priority is scope-dependent, not a device fact.
+Request manufacturer evidence or characterization rather than replacement
+numbers. Do not put present graph-only data, inapplicable features, or
+unreadable material here. If nothing applicable is missing, say so explicitly.
+Neither report contains copied electrical values or assumed numbers.
 
 ## Return to Parent
 
-After writing both reports, return part/family and scope, found versus missing
-counts (distinguishing unresolved graph reads), highest gap severity or none,
-both file paths, source coverage/read blockers, and up to three prioritized
-actions to obtain missing evidence. Do not claim successful full extraction when
-a material source/selection blocker remains.
+After writing both reports, return the selected part/family/scope, PDF page
+coverage, figure/table source count and item totals by `NEEDED`/`NOT NEEDED`
+(count distinct tagged items, noting repeated citations), number of
+`NOT SPECIFIED` information needs, highest missing priority or none, both
+report paths, and up to three prioritized evidence requests. If a complete
+inventory, readable PDF, unambiguous part, or output paths are unavailable,
+write neither report and return the precise blocker to the parent instead.
