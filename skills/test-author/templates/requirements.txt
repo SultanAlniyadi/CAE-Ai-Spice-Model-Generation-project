@@ -1,0 +1,4 @@
+# Starting constraints; record and smoke-test actual versions in each suite.
+PySpice>=1.5,<2
+openpyxl>=3.1,<4
+# ngspice is an external executable, not a pip dependency.

@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0.0",
+  "suite_id": "REPLACE_WITH_DEVICE_SUITE_ID",
+  "suite_version": "REPLACE_WITH_UNIQUE_VERSION",
+  "family": "operational_amplifier",
+  "target": {
+    "part": "REPLACE_WITH_VERIFIED_PART",
+    "variant": "unknown",
+    "package": "unknown",
+    "grade": "unknown",
+    "channel": "unknown",
+    "scope": "REPLACE_WITH_APPROVED_SCOPE"
+  },
+  "sources": [],
+  "interface_file": "interface.json",
+  "simulator": {"backend": "ngspice_batch", "required_features": [], "timeout_s": 60},
+  "requirements": [],
+  "coverage": [],
+  "tests": [],
+  "hashes": {},
+  "assumptions": [],
+  "blockers": [],
+  "harness_validation": {"status": "not_run", "evidence_files": []}
+}
