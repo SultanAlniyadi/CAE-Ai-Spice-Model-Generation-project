@@ -1,43 +1,90 @@
 ---
 name: spice-model-generator
 description: >
-  Generate an ngspice behavioral .SUBCKT from a reconciled requirement report,
-  schema-1.0.0 extraction workbook, architecture recommendation and accepted
-  test-author interface. Fit only eligible evidence and verify the DUT against
-  the frozen, versioned acceptance suite without changing its tests or references.
+  Propose an ngspice architecture from a PDF, required-data report, schema-1.0.0
+  workbook and frozen suite without writing; after explicit approval of the exact
+  proposal, build and verify a behavioral .SUBCKT against the immutable suite.
 ---
 
 # Behavioral SPICE Model Generator
 
 ## Authority and inputs
 
-This skill implements only `operational_amplifier` and `voltage_supervisor` from
-an existing, selected architecture. A recommendation is not permission to
-change the accepted interface or the suite. Do not infer the manufacturer's
-internal schematic from a behavioral equivalent. Do not install dependencies,
-invoke other agents automatically, or modify the requirement report, workbook,
-selector handoff, datasheet, test-author agent/skill, suite, or orchestrator.
+This skill handles only `operational_amplifier` and `voltage_supervisor`. It
+proposes one primary architecture and applicable supporting methods, then
+implements them only after explicit user approval of that exact proposal. Neither
+a proposal nor approval permits changing the accepted interface or suite. Do not
+infer the manufacturer's internal schematic from a behavioral equivalent. Do not
+install dependencies, invoke other agents automatically, or modify the requirement report, workbook,
+datasheet, test-author agent/skill, suite, or orchestrator.
 Return conflicts, extraction requests and approvals to the parent. Respect
 draft-only/no-write requests. This portable skill does not register the agent.
 
 Require explicit paths to the complete readable PDF, its selected
 `*_required_data_for_behavioral_spice.md` report, extraction `.xlsx`, and the
 frozen suite root containing `manifest.json`, `interface.json`, `run_suite.py`,
-`runtime.py`, benches and references. Require the selector's structured handoff
-(it can be supplied as a parent message rather than a file), selected scope,
-the suite manifest SHA256 retained independently by the parent/test author,
-and external output destinations or an approved writable output parent. Never
-substitute a different PDF/suite based on a plausible filename. The optional
-missing-data report provides context, not numerical model inputs. If the
-selector handoff or pinned hash is unavailable, request it before modeling.
+`runtime.py`, benches and references. Require exact selected target/scope and
+the suite manifest SHA256 retained independently by the parent/test author.
+Generation additionally requires the unchanged architecture proposal, explicit
+user approval reference and external output destinations or an approved writable
+output parent. Never substitute a different PDF/suite based on a plausible
+filename. The optional missing-data report provides context, not numerical model
+inputs. The report's `Modeling Techniques` is qualitative guidance, not extracted values or a selected
+primary architecture. If the pinned hash is unavailable, request it before work.
+
+## Two-phase architecture gate
+
+In **proposal-only/no-write** mode, reconcile the inputs below without creating
+any model, log, scratch file or proposal artifact; do not fit, run DUT tests or
+inspect/use holdout test outcomes. Read frozen suite metadata and independently
+check its pinned manifest hash; do not execute its runner in this phase. Examine
+the complete PDF at decision-relevant pages and cite physical PDF pages and
+source regions for family, pin-level function, architecture and essential stages.
+Compare credible architectures qualitatively when available, preferring the
+simplest evidence-supported ngspice path that covers every mandatory in-scope
+behavior. Select **one** primary architecture plus supporting methods per stage;
+do not treat Boyle, Laplace and ABM as interchangeable architecture categories.
+For each stage map report `NEEDED` tags, workbook evidence IDs/conditions, suite
+requirements and missing essential parameters. Separate manufacturer facts from
+provisional scope assumptions and implementation choices; never infer electrical
+values from qualitative techniques or accept an unsourced essential parameter.
+Specify core ngspice elements versus optional XSPICE/version/build-dependent
+paths, required analyses/features and unverified runtime checks; do not assert
+simulation or approval. If family is unsupported, mandatory coverage/evidence is
+missing, scope changes without approval, an essential feature is unavailable, or
+no implementable ngspice path exists, return a blocker rather than a buildable
+proposal. The exported runner currently blocks nonempty
+`simulator.required_features` even after a local feature probe; require a reviewed
+runner extension/new suite before proposing a generation-ready optional path.
+
+Return the **exact proposal text** to the parent in the message, with primary
+architecture and rationale/alternatives, supporting methods, stage-to-evidence
+and requirement mapping, uncovered mandatory behaviors, limitations, exclusions,
+ngspice compatibility path, and explicit identities: PDF path/SHA256/revision;
+required report path/SHA256; workbook path/SHA256/schema; suite path/ID/version,
+manifest path/pinned SHA256 and interface status/approval by/reference; exact
+part/variant/package/grade/channel/mode/threshold and scope. Mark it `proposed`,
+not approved or simulated. If blocked, return conflicts and resolutions instead
+of a seemingly implementable proposal.
+
+In **approved-generation** mode require the parent to supply the identical
+proposal text and an explicit user approval record with unique reference binding
+to that exact proposal and its listed input identities. A previously approved
+scope or report suggestion is not architecture approval. Recompute hashes and
+reconcile identities and architecture before **any** output, fitting or runner
+invocation. If the proposal or approval is missing, lost on a new session, changed
+or rejected, or if any PDF, report, workbook, suite, pinned hash, scope, interface
+or architecture differs, stop and request a fresh proposal and approval. Never
+silently reinterpret approval or substitute a new architecture. Record unchanged
+proposal and approval reference in the external model-test log after passing gates.
 
 ## Reconciliation gate: no output before resolution
 
 1. Read the complete input metadata, not just filenames. Compute the SHA256 of
    the actual supplied PDF bytes. Match it to workbook `Handoff` PDF hash and
-   revision, selector `source.sha256`/revision and the PDF-kind entry in manifest
-   `sources`. Verify the requirement report's PDF identity/revision and its hash
-   when present; if the report omits a hash, resolve its recorded PDF path to
+   revision, proposal PDF identity (generation only) and the PDF-kind entry in
+   manifest `sources`. Verify the requirement report's PDF identity/revision and
+   its hash when present; if the report omits a hash, resolve its recorded PDF path to
    the supplied PDF bytes and compare their SHA256, as well as revision. A path
    that cannot be resolved/verified is not a hash check. Missing/ambiguous source
    identity is a blocker, not permission to assume it matches. Record the actual
@@ -45,9 +92,9 @@ selector handoff or pinned hash is unavailable, request it before modeling.
    PDF hash.
 2. Reconcile manufacturer, exact part, variant, package, grade, channel/mode,
    threshold option, family and scope across report, workbook Handoff and
-   applicable Pins/Specifications/Metadata, selector target/scope and manifest
-   `target`/`family`/source records. Resolve a selector's family-wide `parts` or
-   `packages` list to the *same* selected member, not merely any member. Keep
+   applicable Pins/Specifications/Metadata, proposal target/scope (generation
+   only) and manifest `target`/`family`/source records. Match the *same* selected
+   member, not merely any member of a family-wide part/package list. Keep
    `unknown`, blank and documented not-applicable distinct; request confirmation
    when a selection-critical field cannot be proved. Check source-referenced
    pin IDs and mapping in `interface.json` against applicable workbook `Pins`.
@@ -60,10 +107,11 @@ selector handoff or pinned hash is unavailable, request it before modeling.
    workbook evidence and to suite requirements/coverage, or be explicitly
    documented as an evidence blocker or parent-approved out-of-scope exclusion.
    Block essential missing evidence rather than converting blanks to zero or
-   silently dropping a behavior. Check that selector `status`, recommended
-   architecture, ngspice compatibility path and essential data actually cover
-   mandatory in-scope behaviors. An unsupported/conditional essential feature
-   requires an approved implementation path or a blocker, not an invented fallback.
+   silently dropping a behavior. Check that the proposed primary architecture,
+   supporting methods, ngspice path and essential data cover mandatory in-scope
+   behaviors; in generation mode require exactly the approved architecture.
+   Unsupported or conditional essential features block generation, not invite
+   an invented fallback.
 4. Inspect the versioned manifest, acceptance roles/coverage, referenced benches
    and reference files, and accepted interface approval. A `proposed` interface
    cannot be used for DUT acceptance; ask the parent for an approved new suite
@@ -80,7 +128,8 @@ or silently overwrite an existing destination.
 
 ## Frozen suite integrity
 
-From the supplied suite, before model generation, run its exported copy of the
+Only in approved-generation mode, after the identity/approval gate and before
+model generation, run the supplied suite's exported copy of the
 runner (not the development template), using absolute paths where possible:
 
 ```powershell
@@ -107,7 +156,7 @@ fitting data, logs, results and Python caches outside the suite.
   package order. Match each terminal's role, `pin_ids`, channel, NC/exposed-pad
   applicability and shared rails to the verified selected package. Do not remove
   terminals merely because a stage does not use them.
-- Implement the selector's primary architecture and only applicable supporting
+- Implement the exact approved primary architecture and only its applicable supporting
   methods. For an op amp, derive input polarity/bias/common-mode behavior,
   gain/compensation or slew dynamics, output limits/loading, supply behavior and
   enabled states **only where** relevant source evidence exists. For a supervisor,
@@ -126,9 +175,9 @@ fitting data, logs, results and Python caches outside the suite.
   evidence through the parent; approval alone is not a fabricated datasheet fact.
   Do not extrapolate across unreadable spans or reuse other variants' values.
 - Prefer verified core ngspice R/C/L, supported dependent/behavioral sources and
-  analog state/switch realizations when the selector's primary path is core.
+  analog state/switch realizations when the approved primary path is core.
   Check installed ngspice syntax, version and build before optional XSPICE or
-  version-dependent elements; the selector's documented path is not a runtime
+  version-dependent elements; a documented proposal path is not a runtime
   check. No unsupported cross-dialect `LAPLACE` E source, unverified XSPICE
   `s_xfer`/`pwl`, or assumed .noise contribution from deterministic B sources.
   The resulting `.lib` must be self-contained: no `.include`, `.inc`, `.lib`
@@ -206,9 +255,10 @@ re-evaluate acceptance with an invented comparison or relaxed tolerance.
 ## Model test log and acceptance
 
 Produce a unique `model_test_log.md` or `.txt` beside the model or in another
-external destination. Include the PDF/workbook/report/selector/suite/model
-paths and identities, source suite version, manifest SHA256 and model SHA256;
-Python, PySpice and actual ngspice versions (read the runner's version log;
+external destination. Include the PDF/workbook/required-report/suite/model
+paths and identities, unchanged proposal text with its source identities and
+   explicit user approval reference, source suite version, manifest SHA256 and
+   model SHA256; Python, PySpice and actual ngspice versions (read the runner's version log;
 write `missing` or `unknown` if unavailable); commands, validate outcome,
 preflight/integrity errors, run-results path, actual iterations and fitting
 decisions, and the final `accepted`, `rejected` or `unresolved` status. Disclose
@@ -246,7 +296,7 @@ visible but do not themselves reject; out-of-scope tests do not pass. Do not
 override the runner's `unresolved` or `rejected` with a more favorable status.
 
 Return a brief parent handoff: `.lib`, log and external results paths (if
-produced), suite/model hashes, iterations, final status, highest-priority
-blocking failures, and precise extraction/approval requests. When the input
-gate fails before model creation, return the conflict and locators without
+produced), proposal/approval reference, source/suite/model hashes, iterations,
+final status, highest-priority blocking failures, and precise extraction/approval
+requests. When the input gate fails before model creation, return the conflict and locators without
 fabricating a model, log or DUT test outcome.
