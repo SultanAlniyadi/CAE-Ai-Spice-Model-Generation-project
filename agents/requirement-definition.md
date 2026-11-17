@@ -61,6 +61,11 @@ the parent rather than substituting a procedure.
 
 ## Rules
 
+- Distinguish `published_device` source needs from downstream `derived_or_fitted`
+  behavioral coefficients and `numerical_realization` scales/convergence aids.
+  Name evidence supporting derivation/fitting qualitatively; do not calculate it
+  or report equivalent-model internals as missing manufacturer data.
+
 - Never transcribe, estimate, calculate, digitize, or report electrical values,
   graph points, numeric test conditions, numeric formulas, or derived results.
   Part/package/revision identifiers, page and figure/table IDs, and report counts

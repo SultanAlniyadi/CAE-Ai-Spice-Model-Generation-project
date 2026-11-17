@@ -306,6 +306,17 @@ inside Excel so it can be used independently of this conversation.
 
 ## Normalization, uncertainty and fitting
 
+Keep `published_device` evidence distinct from generator-owned
+`derived_or_fitted` behavioral coefficients and `numerical_realization` scales
+or convergence aids. Digitization, normalization and transcription of published
+equations preserve evidence lineage, not manufacturer publication of internal
+model coefficients. `Fitting_Data` contains selected observations, not fitted
+parameters. Do not place generator coefficients or convergence constants in
+device Specifications. Preserve separately labeled derived consistency checks
+without representing them as published values or performing model fitting.
+Calibration/sampling settings, reduction weights and geometry envelopes are
+extraction policies, not device facts or approved DUT accuracy budgets.
+
 Preserve original units and add normalized values in structured sheets using
 units appropriate to the source quantities, such as V, A, s, Hz, Ω, F, H, W,
 J, C and V/s; temperature remains explicitly °C. Support other electrical,
@@ -352,7 +363,10 @@ evidence for some families. Label a curve's role and selection reason explicitly
 Reserve independent checks where the available evidence allows; input traces
 are validation stimuli rather than device-response fitting data. For every
 proposed test specify matching conditions, stimulus, response, comparison and tolerance
-basis (local extraction envelope or applicable source limits). Typical values
+basis (local extraction envelope or applicable source limits). An extraction
+envelope is advisory comparison guidance, not an executable DUT model-error
+budget; downstream test authoring requires explicit approval for typical/curve
+budgets and any uncertainty combination. Typical values
 without bounds are targets, not pass/fail tolerances. Mark incomplete setups
 and unsigned/unknown conventions explicitly. Keep instructions simulator-neutral;
 record a simulator target only when specified by the request, otherwise unknown.

@@ -36,6 +36,15 @@ the identical proposal plus a reference to explicit user approval of it; check
 all identities again before writing. Carry through the parent's approvals and
 external output destinations. Honor any draft-only/no-write request.
 
+Apply the skill's `published_device`, `derived_or_fitted` and
+`numerical_realization` categories by origin/effect. Require direct evidence for
+device facts, evidence-based methods for behavioral coefficients, and justified
+bounded verification for numerical aids. Include methods/objectives and numerical
+policy in the exact proposal; approval permits documented in-policy values, not
+new behavior or policy changes. Record category-specific lineage in the existing
+external log. Every model-parameter revision shares the ten-candidate limit;
+numerical choices must not use holdouts or acceptance feedback.
+
 Do not generate anything when identities conflict. Do not edit upstream evidence,
 the test-author agent or skill, the frozen suite, or orchestrators. Do not install
 software, delegate automatically, treat fixture runs as DUT results, or tune to

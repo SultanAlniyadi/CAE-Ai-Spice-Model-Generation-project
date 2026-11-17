@@ -53,6 +53,17 @@ description: >
 
 ## Evidence and Coverage
 
+Distinguish `published_device` evidence from generator-owned `derived_or_fitted`
+behavioral coefficients and `numerical_realization` scales/convergence aids.
+Acceptance targets come from applicable source evidence or explicitly approved
+requirements/budgets, not the model's coefficients or numerical choices.
+Evidence-based computed measurement quantities may use documented equations and
+input IDs; label them computed, not published. Do not derive/fix DUT parameters
+here. Bench sample grids, estimators, refinement and harness timeouts are separate
+authoring/measurement policies, not manufacturer characteristics; document their
+basis and retain existing approval requirements. Freeze them before generation:
+the modeler's numerical policy cannot change benches, criteria or resolution.
+
 - Obtain numerical evidence from the workbook, not newly digitized graphs or
   guessed repairs. Use PDF review to verify meaning, applicability and setup.
   User requirements/budgets may define criteria; label them independently from

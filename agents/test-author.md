@@ -31,6 +31,12 @@ publication, preflight, harness checks and frozen-evidence rules. Carry through
 all supplied inputs, target, scope, approvals and destination. Honor draft-only
 and no-write requests. Use the host's permitted file-editing tools.
 
+Distinguish `published_device` evidence from generator-owned `derived_or_fitted`
+and `numerical_realization` parameters. Set independent acceptance from evidence
+or approved budgets, never model coefficients. Document computed metrics and
+author-owned bench resolution/refinement/timeout policy separately from device
+facts; freeze those settings so generator numerical tuning cannot change them.
+
 Shell execution is bounded to finite dependency, artifact and harness checks.
 Do not construct or tune a DUT model, install software, alter upstream artifacts,
 edit orchestrators or delegate to other agents/skills automatically. Route

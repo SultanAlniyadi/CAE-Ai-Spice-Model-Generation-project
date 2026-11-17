@@ -32,6 +32,32 @@ filename. The optional missing-data report provides context, not numerical model
 inputs. The report's `Modeling Techniques` is qualitative guidance, not extracted values or a selected
 primary architecture. If the pinned hash is unavailable, request it before work.
 
+## Numerical parameter categories
+
+Classify each model parameter by origin and effect, not its component name.
+Use these labels in the existing external ledger/log, not as new workbook or
+suite schema fields:
+
+| Category | Meaning and required provenance |
+|---|---|
+| `published_device` | Published device characteristics, conditions, equations and observations. Cite applicable workbook/source IDs, units, sign, typical/guaranteed class, extraction status and uncertainty. Digitization and unit normalization preserve evidence lineage; they do not create fitted coefficients. Missing essential device evidence remains a blocker. |
+| `derived_or_fitted` | Equivalent behavioral parameters calculated or estimated from applicable evidence within the approved architecture. Record input IDs, equation/algorithm, units, constraints, objective, outcome and identifiability limits. Their individual values need not have been published. Fit only eligible observations and applicable specification constraints, never holdouts or suite outcomes. |
+| `numerical_realization` | Internal scales, stabilization parameters or solver controls intended to preserve evidenced terminal behavior, not define device physics. Record rationale, dimensional/scaling relationships, allowed bounds or deterministic selection rules, and sensitivity/refinement evidence. No fabricated PDF citation is required. |
+
+For example, an RC state stage can use a derived time constant and an independent
+internal scaling choice: record both lineages. A smoothing width that materially
+changes trip thresholds, pulse recognition, delay, slew or loading is not merely
+a convergence aid. Treat it as a behavioral approximation needing evidence and
+authorization within the proposal, or block it; reclassification alone supplies
+neither. Do not infer missing hysteresis as zero or use numerical aids to fill
+missing device behavior. Approval never converts a choice into a manufacturer fact.
+
+Acceptance budgets, bench resolution, extraction geometry settings, suggested
+weights and timeout policies remain separately owned authoring/measurement
+policies, not device characteristics or additional model-fitting freedom.
+Keep workbook/suite schema `1.0.0` and upstream evidence unchanged. An old approval
+without this policy must not silently acquire expanded numerical permissions.
+
 ## Two-phase architecture gate
 
 In **proposal-only/no-write** mode, reconcile the inputs below without creating
@@ -45,9 +71,15 @@ simplest evidence-supported ngspice path that covers every mandatory in-scope
 behavior. Select **one** primary architecture plus supporting methods per stage;
 do not treat Boyle, Laplace and ABM as interchangeable architecture categories.
 For each stage map report `NEEDED` tags, workbook evidence IDs/conditions, suite
-requirements and missing essential parameters. Separate manufacturer facts from
-provisional scope assumptions and implementation choices; never infer electrical
-values from qualitative techniques or accept an unsourced essential parameter.
+requirements and missing essential device evidence. Identify intended parameter
+categories, derivation methods, fit-only evidence/objectives/constraints, and
+numerical-choice bounds or selection rules with finite sensitivity/refinement
+checks. Proposal readiness requires sufficient applicable evidence and a
+defensible implementable method, not already-fitted coefficients. Disclose
+identifiability risks; block material ambiguity with no justified resolution.
+Keep this proposal qualitative: do not calculate coefficients or perform fits.
+Separate manufacturer facts from scope assumptions and implementation choices;
+never infer device values from qualitative techniques.
 Specify core ngspice elements versus optional XSPICE/version/build-dependent
 paths, required analyses/features and unverified runtime checks; do not assert
 simulation or approval. If family is unsupported, mandatory coverage/evidence is
@@ -59,7 +91,8 @@ runner extension/new suite before proposing a generation-ready optional path.
 
 Return the **exact proposal text** to the parent in the message, with primary
 architecture and rationale/alternatives, supporting methods, stage-to-evidence
-and requirement mapping, uncovered mandatory behaviors, limitations, exclusions,
+and requirement mapping, category-specific parameter methods and numerical policy,
+uncovered mandatory behaviors, limitations, exclusions,
 ngspice compatibility path, and explicit identities: PDF path/SHA256/revision;
 required report path/SHA256; workbook path/SHA256/schema; suite path/ID/version,
 manifest path/pinned SHA256 and interface status/approval by/reference; exact
@@ -75,8 +108,12 @@ reconcile identities and architecture before **any** output, fitting or runner
 invocation. If the proposal or approval is missing, lost on a new session, changed
 or rejected, or if any PDF, report, workbook, suite, pinned hash, scope, interface
 or architecture differs, stop and request a fresh proposal and approval. Never
-silently reinterpret approval or substitute a new architecture. Record unchanged
-proposal and approval reference in the external model-test log after passing gates.
+silently reinterpret approval or substitute a new architecture. Approval also
+authorizes the declared methods, fitting objectives/constraints and numerical
+policy, not each eventual in-policy coefficient. Changed methods, objectives,
+bounds or selection/verification rules require a fresh proposal and approval.
+Record unchanged proposal and approval reference in the external model-test log
+after passing gates. Request a fresh proposal if an older approval omits this policy.
 
 ## Reconciliation gate: no output before resolution
 
@@ -168,11 +205,13 @@ fitting data, logs, results and Python caches outside the suite.
   `Pins`, `Metadata`/`Quality` and fit-eligible `Curve_Data` joined through
   `Fitting_Data`. Check conditions, limit class (typical versus guaranteed),
   source region, direction, sign, reference state, load and normalized units.
-  Trace each numeric model parameter to workbook row/curve/condition IDs in the
-  work log. Use workbook values and conditions only: no guessed operating point,
-  invented pole, resistance, delay, clamp, smoothing constant or numeric corner.
-  If implementation needs an unsourced number, request extraction/approved
-  evidence through the parent; approval alone is not a fabricated datasheet fact.
+   Classify and log each numerical parameter using the categories above. Published
+   characteristics require workbook evidence; derived/fitted coefficients require
+   evidence-based methods; numerical realization choices require approved policy
+   and verification, not nonexistent datasheet internal-component values.
+   Do not invent operating conditions or undocumented thresholds, delays, clamps
+   or other behavior. Route missing device evidence to extraction through the
+   parent; route derivation/identifiability and numerical-policy blockers separately.
   Do not extrapolate across unreadable spans or reuse other variants' values.
 - Prefer verified core ngspice R/C/L, supported dependent/behavioral sources and
   analog state/switch realizations when the approved primary path is core.
@@ -197,8 +236,12 @@ that candidate unchanged during suite execution.
 ## Fitting and iteration budget
 
 At most **10 candidate iterations total**, including the initial model and every
-subsequent parameter revision. Maintain an external ledger of candidate number,
-parameter IDs/values/units, fit-only evidence IDs, objective and outcome. Only
+subsequent model-parameter revision, including numerical sensitivity variants.
+Reserve candidates for required numerical verification; no extra numerical-tuning
+budget exists. Unchanged-model diagnostic runs do not consume candidates but need
+an approved finite run/refinement budget and recorded solver settings/outcomes.
+Maintain an external ledger of candidate number, parameter category and provenance
+as specified below. For `derived_or_fitted` adjustment, only
 `Fitting_Data` rows with `Role=fitting` AND `Fit_Eligible=1`, verified applicable
 `Curve_Data`/conditions and source-supported specification constraints may drive
 parameter adjustment. A specified/typical workbook value can initialize a fixed
@@ -212,7 +255,25 @@ derive a tolerance from digitization geometry or a suite criterion. Stop early
 when those objectives and numerical stability are met, or no justified update
 remains; at iteration 10 stop regardless. Record unmet or undefined targets,
 non-identifiable parameters and convergence limits. Never relabel fit reuse as
-independent validation.
+independent validation. Disclose non-identifiable alternatives; do not use holdouts
+to choose between them. Material unresolved behavioral ambiguity stops candidate
+selection and returns an `unresolved` blocker to the parent, not a passing model
+with a caveat. Harmless non-uniqueness of equivalent internal realizations may be
+disclosed without blocking when relevant terminal behavior is sufficiently supported.
+
+For `numerical_realization` choices, use the approved diagnostic policy rather
+than the fitting objective or acceptance suite. Before the first DUT-suite run, compare
+relevant terminal DC/AC/transient behavior under source-supported conditions
+across declared scale/stabilization and solver-resolution refinements. Record
+quantities, comparison bounds, variants, convergence and sensitivity outcomes.
+Bounds are independently authorized numerical-verification policy, not borrowed
+frozen-suite criteria or geometry-derived model budgets. A behavioral change
+beyond that policy requires evidence/approval, not relabeling as numerical.
+No holdout, workbook Validation, frozen reference or suite outcome may select
+these choices. If invariance cannot be established within the shared candidate
+and diagnostic budgets, report unresolved numerical verification; do not claim
+acceptance even if later DUT measurements pass. Solver-only diagnostics do not
+authorize modifying frozen bench settings or concealing changed execution conditions.
 
 Use the frozen acceptance suite on the final candidate, not as the fitting
 optimizer. In particular a failed holdout may not trigger tuning on that
@@ -228,7 +289,10 @@ Preflight Python 3.10+, PySpice availability/version, ngspice executable/version
 and required build features without installing software. The unmodified runner
 currently blocks any nonempty `simulator.required_features` pending a reviewed
 runner extension/probe; do not claim a local feature probe makes it accept.
-After the final model and renewed `validate`, execute the exported runner:
+Complete required numerical verification and resolve material identifiability
+blocks before finalizing the candidate or exposing holdouts. If either remains
+unresolved, return the blocker without invoking the DUT suite. After the final
+model and renewed `validate`, execute the exported runner:
 
 ```powershell
 python -B <suite>/run_suite.py run --suite <suite> --model <absolute-model.lib> --results <external-results-parent>
@@ -265,6 +329,18 @@ decisions, and the final `accepted`, `rejected` or `unresolved` status. Disclose
 limitations, approved exclusions, unsupported features, pending extraction or
 approval, and whether a suite was actually run against the DUT.
 
+In the existing external ledger/log, record each stable parameter ID, category,
+value/unit (or explicit dimensionless status), model role and approval reference.
+Published entries cite workbook/source/condition IDs and evidence class. Derived
+or fitted entries cite input evidence, equation/algorithm, objective, constraints,
+outcome and identifiability limits. Numerical entries cite rationale, scaling
+relationships, policy bounds/selection rules, diagnostic conditions, simulator
+identity and sensitivity/refinement results. Record solver controls separately
+from embedded model parameters, including finite diagnostic budgets and skips.
+This is traceability, not machine-validated semantic provenance or a new artifact
+schema. Summarize material unresolved identifiability and numerical verification
+in the parent handoff, including when they prevented DUT execution.
+
 Join every manifest test ID to its `results.json` entry; when execution never
 started, treat each as unrun unless a known prerequisite blocks it. Tabulate
 total, passed, failed, blocked, errored, unrun for each priority
@@ -290,7 +366,8 @@ Accept **only** when the runner reports `accepted`, at least one in-scope
 blocking gate exists and every such gate passed; no blocking gate may be
 blocked, errored, timed out, failed or unrun. Require no blocked in-scope
 coverage, suite-global blockers, preflight/integrity/hash errors or unresolved
-source identity. Blocking `fail` rejects; otherwise any missing gate pass or
+source identity, material behavioral identifiability or numerical verification.
+Blocking `fail` rejects; otherwise any missing gate pass or
 incomplete verification is `unresolved`. Advisory failures/errors remain
 visible but do not themselves reject; out-of-scope tests do not pass. Do not
 override the runner's `unresolved` or `rejected` with a more favorable status.

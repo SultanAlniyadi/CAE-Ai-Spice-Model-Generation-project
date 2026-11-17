@@ -30,6 +30,12 @@ target. Follow the skill's exclusive-creation and collision-suffix rules; never
 overwrite an existing workbook. An explicit destination from the caller takes
 precedence.
 
+Preserve `published_device` evidence and its normalization lineage; downstream
+`derived_or_fitted` coefficients and `numerical_realization` choices belong to
+the generator, not extracted device Specifications. `Fitting_Data` holds selected
+observations, not fitted parameters. Extraction settings and uncertainty remain
+separate policies, not manufacturer facts or DUT accuracy budgets.
+
 Do not edit the installed skill during extraction tasks at
 `C:\Users\C75040\.agents\skills\chart-data-extractor\SKILL.md`. Create only the deliverable
 workbook; temporary extraction helpers and inspection assets must follow the

@@ -44,6 +44,13 @@ requires them; never overwrite an existing artifact or edit upstream evidence.
 
 ## Ordered delegations
 
+Preserve the distinction between `published_device` evidence,
+`derived_or_fitted` behavioral coefficients and `numerical_realization` choices.
+Do not demand datasheet values for an equivalent model's internal realization.
+Route missing essential device evidence to extraction, derivation/identifiability
+and numerical verification to the generator, and policy changes to user approval.
+Never select parameter values yourself or treat approval as manufacturer evidence.
+
 1. Invoke `requirement-definition` with the complete PDF, exact selection,
    scope and an explicit destination directory where neither exact-name output
    exists. Ask for the selected part's
@@ -78,12 +85,18 @@ requires them; never overwrite an existing artifact or edit upstream evidence.
    manifest SHA256, exact target/scope and accepted interface. Require source-
    cited one-primary-architecture proposal, supporting methods, stage/evidence/
    requirement mapping, ngspice core versus optional/build paths, identities,
-   uncovered mandatory behavior and limitations. Relay a blocker rather than
+   uncovered mandatory behavior and limitations, intended parameter categories,
+   derivation methods, fit-only objectives/constraints and bounded numerical-choice
+   selection/verification policy. Coefficients need not already be fitted in this
+   no-write phase. Relay a blocker rather than
    repairing its evidence. Present the **exact proposal** to the user and ask
    explicit approval of that proposal and its listed input identities; do not
    interpret a requirements technique or scope assumption as consent. Record a
    unique in-session reference to the unchanged proposal and approval. If the
    user rejects/changes it, request a fresh proposal instead of proceeding.
+   Approval authorizes declared methods and in-policy values without per-coefficient
+   approval; changed methods/objectives/bounds/rules require renewed approval.
+   An older proposal without numerical policy does not inherit these permissions.
 5. Before generation, check existence and identity of all inputs, free external
    model/log destinations, and a results parent outside the suite. Compare PDF
    SHA256/revision, report/workbook hashes, suite ID/version and pinned manifest
@@ -95,7 +108,10 @@ requires them; never overwrite an existing artifact or edit upstream evidence.
    unique reference, PDF, required-data report, workbook, suite and pinned hash,
    target/scope and external destinations. Require suite integrity validation,
    self-contained `.lib`, model-test log, external `results.json` when produced,
-   source/model/manifest hashes, iterations, DUT status and precise blockers.
+   source/model/manifest hashes, category-specific parameter lineage, numerical
+   sensitivity/refinement outcomes, iterations, DUT status and precise blockers.
+   All model-parameter revisions share ten candidates; unchanged-model diagnostics
+   are finite and logged. Unresolved numerical verification is not acceptance.
    Never run or repair the suite yourself, overwrite artifacts, alter the frozen
    tests, or substitute a smoke/fixture run for DUT acceptance. Runner exit 1
    can be rejected or unresolved: defer to `results.json` and the generator's
@@ -109,7 +125,8 @@ applicable; include approved architecture/proposal reference when one exists,
 pinned manifest and actual model/source hashes when known. State precise blocker,
 required resolution and unrun stages. Report generator's actual `accepted`,
 `rejected` or `unresolved` result, failed/blocked/unrun tests, limits and pending
-approvals without upgrading its status. Claim acceptance only if the generator
+approvals, numerical-policy reference and unresolved identifiability/numerical
+verification without upgrading its status. Claim acceptance only if the generator
 reports matching hashes and actual frozen-suite DUT results with `accepted`
 status; missing/blocked suites, no DUT run, rejection or unresolved outcomes
 are never passes.

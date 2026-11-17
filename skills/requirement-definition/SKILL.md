@@ -48,6 +48,16 @@ simulate a model, make a workbook, or claim verified behavior.
 
 ## Tagging and Evidence Rules
 
+Distinguish `published_device` characteristics/evidence from downstream
+`derived_or_fitted` behavioral coefficients and `numerical_realization` scales
+or convergence aids. Identify named source inputs sufficient to support a
+derivation or fit; do not require publication of an equivalent model's internal
+R/C values, poles or arbitrary scales. Discuss those paths qualitatively in
+Modeling Techniques, without calculating values or choosing an architecture.
+Only genuinely absent required device evidence belongs in missing-data reports;
+an unchosen realization constant is not missing manufacturer information.
+This distinction never permits substituting defaults for absent behavior.
+
 For the selected part and scope, register **every figure and table** in the PDF,
 including packaging, stress, other-variant and otherwise irrelevant sources. Use
 the PDF's own page and figure/table identifier (or a descriptive locator if it
@@ -343,7 +353,9 @@ and scope. `NOT NEEDED` is not a synonym for `NOT SPECIFIED`.
 
 In Modeling Techniques, identify **ngspice as the primary target** and map
 applicable stages to qualitative behavioral techniques, named needed inputs
-and page/figure/table references. For each technique state a plausible ngspice
+and page/figure/table references. Distinguish source inputs, downstream
+derivation/fitting methods and numerical realization choices qualitatively.
+For each technique state a plausible ngspice
 implementation path (core subcircuit primitives such as supported controlled
 sources, R/C state and switches where sufficient; otherwise a clearly
 conditional XSPICE/build- or version-dependent path), required analyses,
