@@ -81,7 +81,7 @@ def safe_path(root, relative):
 
 
 def portable_name(name):
-    return bool(name) and not name.endswith((".", " ")) and not re.fullmatch(
+    return bool(name) and not re.search(r'[<>:"/\\|?*\x00-\x1f]', name) and not name.endswith((".", " ")) and not re.fullmatch(
         r"(?i)(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?", name)
 
 
@@ -337,6 +337,8 @@ def trace_window(x, y, start, end, min_samples, max_step):
 
     Never use across evidence gaps or repeated-X branches. Units and coordinates
     must already match the manifest; no extrapolation or implicit resampling.
+    Return/count only real samples in [start, end]. Resolution checks cover
+    positive-length interval overlap, including boundary-straddling intervals.
     """
     require(isinstance(x, list) and isinstance(y, list) and len(x) == len(y) and len(x) >= 2,
             "Missing/misaligned trace")
@@ -348,20 +350,37 @@ def trace_window(x, y, start, end, min_samples, max_step):
             "Explicit positive resolution settings required")
     pairs = [(a, b) for a, b in zip(x, y) if start <= a <= end]
     require(len(pairs) >= min_samples, "Insufficient window samples")
-    require(all(b - a <= max_step for a, b in zip(x, x[1:]) if b >= start and a <= end),
+    require(all(b - a <= max_step for a, b in zip(x, x[1:]) if b > start and a < end),
             "Trace exceeds maximum timestep/sweep spacing")
     return [p[0] for p in pairs], [p[1] for p in pairs]
 
 
 def crossing(x, y, level, direction, start, end, min_samples, max_step):
-    """Unique directional crossing using explicitly linear interpolation."""
-    xx, yy = trace_window(x, y, start, end, min_samples, max_step)
+    """Unique arrival in closed [start, end], using explicit linear interpolation.
+
+    Strict departure/inclusive arrival counts threshold touches but not plateau
+    departures. An arrival at start needs a predecessor proving its direction.
+    """
+    trace_window(x, y, start, end, min_samples, max_step)
     require(number(level) and direction in ("rising", "falling"), "Invalid crossing definition")
     events = []
-    for a, b, va, vb in zip(xx, xx[1:], yy, yy[1:]):
+    for a, b, va, vb in zip(x, x[1:], y, y[1:]):
+        if b < start or a >= end:
+            continue
         crossed = va < level <= vb if direction == "rising" else va > level >= vb
         if crossed:
-            events.append(a + (level - va) * (b - a) / (vb - va))
+            if level == vb:
+                coordinate = b
+            else:
+                delta, offset, span = vb - va, level - va, b - a
+                require(all(number(v) for v in (delta, offset, span)), "Overflow in crossing interpolation")
+                fraction = offset / delta
+                require(0 < fraction < 1, "Insufficient precision in crossing interpolation")
+                coordinate = a + fraction * span
+                require(a < coordinate < b, "Insufficient precision in crossing coordinate")
+            require(number(coordinate), "Nonfinite crossing coordinate")
+            if start <= coordinate <= end:
+                events.append(coordinate)
     require(len(events) == 1, "Expected one qualified crossing; absent/ambiguous event")
     return events[0]
 
@@ -370,15 +389,20 @@ def settling_time(x, y, event, final, band, dwell, end, min_samples, max_step):
     """First sampled final band entry sustained through the observation end.
 
     This sampled estimator does not interpolate entry; max_step constrains its
-    uncertainty. Final reference must come from the acceptance definition.
+    uncertainty. Observation end must be a real sample; event may be unaligned.
+    Band and dwell equality are inclusive. Sampling does not prove continuous
+    intersample behavior. Final reference comes from the acceptance definition.
     """
     require(number(final) and number(band) and band >= 0 and number(dwell) and dwell > 0,
             "Invalid settling reference/band/dwell")
     xx, yy = trace_window(x, y, event, end, min_samples, max_step)
+    require(xx[-1] == end, "Settling observation end must have an exact real sample")
     last_out = max((i for i, value in enumerate(yy) if abs(value - final) > band), default=-1)
     first = last_out + 1
     require(first < len(xx) and end - xx[first] >= dwell, "No final entry with sufficient settling dwell")
-    return xx[first] - event
+    elapsed = xx[first] - event
+    require(number(elapsed), "Overflow in settling elapsed time")
+    return elapsed
 
 
 def aggregate(tests, results, coverage=None):

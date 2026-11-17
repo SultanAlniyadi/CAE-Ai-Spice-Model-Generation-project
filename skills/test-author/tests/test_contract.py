@@ -131,6 +131,99 @@ class CriteriaTests(unittest.TestCase):
         falling = rt.crossing([0, 1, 2], [1, 0, 0], 0.5, "falling", 0, 2, 3, 1)
         self.assertEqual(rising - falling, 1)
 
+    def test_window_resolution_and_real_sample_counts(self):
+        x = [-10, 0, 1, 2, 12]
+        self.assertEqual(rt.trace_window(x, [0] * 5, 0, 2, 3, 1), ([0, 1, 2], [0, 0, 0]))
+        self.assertEqual(rt.crossing(x, [-1, 0, 1, 1, 1], 0, "rising", 0, 2, 3, 1), 0)
+        for x, start, end, count in (([-10, 1, 2, 12], 0.25, 2, 2),
+                                     ([-10, 0, 1, 12], 0, 1.75, 2),
+                                     ([0, 1, 2, 3], 0.25, 2.75, 3)):
+            with self.subTest(x=x), self.assertRaises(rt.ContractError):
+                rt.trace_window(x, [0] * len(x), start, end, count, 1)
+
+    def test_crossing_boundary_brackets_and_event_filtering(self):
+        cases = [([0, 1, 1, 1], 0.25, 2.75, 0.5),
+                 ([0, 0, 0, 1], 0.25, 2.75, 2.5),
+                 ([0, 1, 1, 1], 0.5, 2.75, 0.5),
+                 ([0, 0, 0, 1], 0.25, 2.5, 2.5)]
+        for direction in ("rising", "falling"):
+            for y, start, end, expected in cases:
+                values = y if direction == "rising" else [1 - v for v in y]
+                with self.subTest(direction=direction, start=start, end=end, y=y):
+                    self.assertEqual(rt.crossing([0, 1, 2, 3], values, 0.5, direction,
+                                                 start, end, 2, 1), expected)
+            for y, start, end in (([0, 1, 1, 1], 0.5 + 2**-20, 2.75),
+                                  ([0, 0, 0, 1], 0.25, 2.5 - 2**-20),
+                                  ([0, 1, 0, 1], 0.25, 3)):
+                values = y if direction == "rising" else [1 - v for v in y]
+                with self.subTest(direction=direction, y=y), self.assertRaises(rt.ContractError):
+                    rt.crossing([0, 1, 2, 3], values, 0.5, direction, start, end, 2, 1)
+            y = [0, 1, 0, 1, 0, 1]
+            values = y if direction == "rising" else [1 - v for v in y]
+            self.assertEqual(rt.crossing([0, 1, 2, 3, 4, 5], values, 0.5,
+                                         direction, 1, 4, 4, 1), 2.5)
+
+    def test_crossing_threshold_ownership(self):
+        for direction, sign in (("rising", 1), ("falling", -1)):
+            for y in ([-1, 0, 0, 1], [-1, 0, -1, -1]):
+                values = [sign * v for v in y]
+                self.assertEqual(rt.crossing([0, 1, 2, 3], values, 0,
+                                             direction, 0, 3, 4, 1), 1)
+                self.assertEqual(rt.crossing([0, 1, 2, 3], values, 0,
+                                             direction, 1, 3, 3, 1), 1)
+            for y in ([0, 0, 1, 1], [-1, 0, -1, 0]):
+                with self.subTest(direction=direction, y=y), self.assertRaises(rt.ContractError):
+                    rt.crossing([0, 1, 2, 3], [sign * v for v in y], 0, direction, 0, 3, 4, 1)
+        # Exact endpoint ownership avoids multiply-first underflow.
+        self.assertEqual(rt.crossing([0, 0.5, 1], [0, 5e-324, 5e-324], 5e-324,
+                                     "rising", 0, 1, 3, 0.5), 0.5)
+
+    def test_crossing_finite_arithmetic(self):
+        self.assertEqual(rt.crossing([0, 4, 8], [0, 1e308, 1e308], 5e307,
+                                     "rising", 0, 8, 3, 4), 2)
+        with self.assertRaisesRegex(rt.ContractError, "Overflow"):
+            rt.crossing([0, 4, 8], [-1e308, 1e308, 1e308], 0, "rising", 0, 8, 3, 4)
+        with self.assertRaisesRegex(rt.ContractError, "precision"):
+            rt.crossing([0, 1e308, 1.5e308], [0, 1e308, 1e308], 1e-100,
+                        "rising", 1e-101, 1.5e308, 2, 1e308)
+
+    def test_sampled_settling_end_and_entry(self):
+        for y in ([0, 1, 1, 0], [0, 1, 1, 1]):
+            with self.subTest(y=y), self.assertRaisesRegex(rt.ContractError, "exact real sample"):
+                rt.settling_time([0, 1, 2, 3], y, 0, 1, 0.1, 1, 2.9, 3, 1)
+        for y, band, dwell, expected in (([0, 1, 1, 1, 1], 0.25, 1, 1),
+                                         ([0, 0.75, 1.25, 1, 1], 0.25, 1, 1),
+                                         ([0, 1, 1, 1, 1], 0, 1, 1),
+                                         ([0, 1, 0, 1, 1], 0.25, 1, 3),
+                                         ([0, 0, 0, 1, 1], 0.25, 1, 3)):
+            with self.subTest(y=y, band=band):
+                self.assertEqual(rt.settling_time([0, 1, 2, 3, 4], y, 0, 1, band,
+                                                  dwell, 4, 5, 1), expected)
+        self.assertEqual(rt.settling_time([0, 1, 2, 3, 4], [1] * 5,
+                                          0.25, 1, 0, 1, 4, 4, 1), 0.75)
+        for y, dwell in (([0, 0, 0, 1, 1], 1 + 2**-20),
+                          ([0, 0, 0, 0, 1], 1), ([0, 1, 1, 1, 0], 1)):
+            with self.subTest(y=y, dwell=dwell), self.assertRaises(rt.ContractError):
+                rt.settling_time([0, 1, 2, 3, 4], y, 0, 1, 0.25, dwell, 4, 5, 1)
+        with self.assertRaisesRegex(rt.ContractError, "Overflow"):
+            rt.settling_time([-1e308, 0, 8e307, 1e308], [0, 0, 1, 1],
+                             -1e308, 1, 0, 1e307, 1e308, 4, 1e308)
+
+    def test_trace_validation_errors(self):
+        cases = [([0, 1, 2], [0, 1], 0, 2, 2, 1),
+                 ([0, 1, 1], [0, 1, 2], 0, 1, 2, 1),
+                 ([0, 2, 1], [0, 1, 2], 0, 1, 2, 1),
+                 ([0, 1, 2], [0, float("nan"), 2], 0, 2, 2, 1),
+                 ([0, 1, float("inf")], [0, 1, 2], 0, 2, 2, 1),
+                 ([0, 1, 2], [0, 1, 2], -1, 2, 2, 1),
+                 ([0, 1, 2], [0, 1, 2], 0, 3, 2, 1),
+                 ([0, 1, 2], [0, 1, 2], 1, 1, 2, 1),
+                 ([0, 1, 2], [0, 1, 2], 0, 2, True, 1),
+                 ([0, 1, 2], [0, 1, 2], 0, 2, 2, 0)]
+        for args in cases:
+            with self.subTest(args=args), self.assertRaises(rt.ContractError):
+                rt.trace_window(*args)
+
 
 class SuiteTests(unittest.TestCase):
     def setUp(self):
@@ -215,6 +308,35 @@ class SuiteTests(unittest.TestCase):
         rt.validate_manifest(rt.load_json(self.root / "manifest.json"), self.root)
         self.assertEqual(rt.load_json(run / "measurement.json")["value"], 1)
 
+    def test_exported_boundary_helpers(self):
+        # Configure this synthetic bench before sealing; no simulator or DUT result.
+        (self.root / "benches" / "test.py").write_text(
+            "from pathlib import Path\nimport runtime\n"
+            "assert Path(runtime.__file__).resolve().parent == Path(__file__).resolve().parents[1]\n"
+            "def measure(run_dir, test):\n"
+            "    event = runtime.crossing([0,1,2,3], [0,1,1,1], 0.5, 'rising', 0.25, 2.75, 2, 1)\n"
+            "    elapsed = runtime.settling_time([0,1,2,3], [0,1,1,1], event, 1, 0.1, 1, 3, 3, 1)\n"
+            "    assert event == 0.5 and elapsed == 0.5\n"
+            "    try:\n"
+            "        runtime.settling_time([0,1,2,3], [0,1,1,0], 0, 1, 0.1, 1, 2.9, 3, 1)\n"
+            "    except runtime.ContractError:\n"
+            "        pass\n"
+            "    else:\n"
+            "        raise AssertionError('Unsampled end accepted')\n"
+            "    return {'value': elapsed, 'unit': 's'}\n", encoding="utf-8")
+        manifest_hash = rt.seal_suite(self.root)
+        run = self.parent / "helper worker with spaces"
+        run.mkdir()
+        result = subprocess.run([sys.executable, "-B", str(self.root / "runtime.py"), "_worker",
+                                 "--suite", str(self.root), "--test", "test_core",
+                                 "--run-dir", str(run), "--stage", "measure"],
+                                cwd=self.parent, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(rt.load_json(run / "measurement.json"), {"value": 0.5, "unit": "s"})
+        rt.validate_manifest(rt.load_json(self.root / "manifest.json"), self.root)
+        self.assertEqual(rt.digest(self.root / "manifest.json"), manifest_hash)
+        self.assertFalse(list(self.root.rglob("__pycache__")))
+
     def test_model_signature_and_includes(self):
         path = self.parent / "model.sub"
         interface = rt.load_json(self.root / "interface.json")
@@ -285,6 +407,28 @@ class SuiteTests(unittest.TestCase):
             path.write_text(content, encoding="utf-8")
             with self.assertRaises(rt.ContractError):
                 rt.load_json(path)
+
+    def test_windows_invalid_path_components(self):
+        for character in '<>:"/\\|?*' + ''.join(chr(v) for v in range(32)):
+            with self.subTest(character=repr(character)):
+                self.assertFalse(rt.portable_name(f"gain{character}data.csv"))
+                # Slash is a valid path separator, not part of a component.
+                if character != "/":
+                    for path in (f"references/gain{character}data.csv",
+                                 f"references{character}data/gain.csv"):
+                        with self.assertRaises(rt.ContractError):
+                            rt.safe_path(self.root, path)
+        for path in ("references/gain-data_1.csv", "references with spaces/gain.csv"):
+            self.assertEqual(rt.safe_path(self.root, path), self.root / path)
+
+    @unittest.skipIf(os.name == "nt", "Windows cannot create the nonportable filename fixture")
+    def test_inventory_rejects_windows_invalid_filename(self):
+        (self.root / "gain?.csv").write_text("nonportable fixture", encoding="utf-8")
+        with self.assertRaisesRegex(rt.ContractError, "Nonportable path"):
+            rt.inventory(self.root)
+        with self.assertRaisesRegex(rt.ContractError, "Nonportable path"):
+            rt.seal_suite(self.root)
+        self.assertEqual(rt.load_json(self.root / "manifest.json")["hashes"], {})
 
     def test_synthetic_template_refuses_dut(self):
         spec = importlib.util.spec_from_file_location("fixture_template", SCRIPTS.parent / "templates" / "bench.py")

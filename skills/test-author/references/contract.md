@@ -79,6 +79,25 @@ are errors. No interpolation, masking, extrapolation or implicit unit conversion
 occurs in the evaluator. Benches supply explicitly aligned segmented values and
 check evidence geometry. Store approval for any uncertainty/budget combination.
 
+Measurement helpers are distinct from that evaluator. `trace_window()` returns
+only real samples in closed `[start, end]`; brackets earn no sample-count credit.
+Maximum spacing applies to intervals with positive-length window overlap, not
+exterior intervals merely touching aligned boundaries. `crossing()` retains
+boundary brackets, explicitly linearly interpolates, and requires one event in
+the closed window. Rising is `va < level <= vb`; falling is `va > level >= vb`.
+Touches count, plateau departures do not, and arrival exactly at start requires
+a predecessor. A trace starting at the threshold does not prove directional arrival.
+
+`settling_time()` reports first sampled final-band entry after the last
+out-of-band sample, sustained through an exactly sampled observation end. An
+unaligned trigger is allowed; an unsampled end is an error. Band/dwell equality
+is inclusive. No implicit epsilon, interpolated entry/end or shortened window
+is allowed. Define/arrange end sampling before freezing, not from a failing run.
+Resolution checks constrain the sampled estimator, not continuous physical
+behavior between samples; nonfinite computed events/elapsed times are errors.
+If interpolation arithmetic loses an interior event to an endpoint through
+insufficient precision, fail explicitly rather than return that false endpoint.
+
 ## Interface and Bench API
 
 `interface.json`: subcircuit (portable SPICE name), terminals (ordered nonempty
@@ -113,8 +132,18 @@ Copy runtime.py and run_suite.py into each suite; dependency constraints in
 templates/requirements.txt are a starting point, not proof of installed support.
 Every file (including instructions/harness evidence/helpers) is hashed except
 the root manifest. Avoid symlinks, caches, duplicate case paths and Windows device
-names. Stage exclusively, seal once, validate, publish without collision. Parent
+names. Each path component must reject Windows-invalid characters
+(`<>:"/\|?*` and control characters U+0000 through U+001F), even on systems
+that permit those filenames; slash is allowed only as the relative-path separator.
+Trailing dots/spaces remain prohibited. Stage exclusively, seal once, validate,
+publish without collision. Parent
 retains the manifest SHA256 independently. Do not modify any frozen file in tuning.
+
+Corrected helper semantics require approved new versions of affected suites,
+updated metric definitions, rerun harness validation and new pinned hashes.
+Never patch/reseal existing frozen runtime copies. Changed suite identities need
+fresh architecture approval; historical results retain original hashes and
+affected results require reassessment.
 
 Results live outside the suite in unique run directories. Results JSON records
 suite version, manifest/model hashes, dependency versions/logs, preflight blockers,

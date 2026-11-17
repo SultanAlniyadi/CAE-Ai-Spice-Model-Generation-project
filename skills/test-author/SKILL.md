@@ -114,7 +114,14 @@ runtime; do not create a second criterion engine in benches.
 - Define sign/linear-versus-dB/phase semantics and interpolation in every metric.
   Never interpolate across gaps, extrapolate, discard failed points or force
   repeated-X branches into a single-valued curve. Prepare explicit aligned
-  reference segments in benches; runtime performs no interpolation.
+  reference segments in benches; the criterion evaluator performs no interpolation.
+  The `crossing()` helper explicitly linearly interpolates adjacent samples and
+  counts only events in closed `[start, end]`, retaining boundary brackets.
+  Rising uses strict departure/inclusive arrival (`va < level <= vb`); falling
+  uses `va > level >= vb`. Threshold touches count; plateaus/departures add no
+  event. Arrival at start requires a predecessor; a trace starting at threshold
+  does not prove arrival. `trace_window()` returns/counts only real in-window
+  samples and checks spacing on positive-length overlapping intervals.
 - Define event direction/decision level, estimator, initial state, measurement
   window, dwell, final reference and resolution. Missing events, empty windows,
   missing samples, insufficient sampling and nonfinite results are `error`, not
@@ -155,7 +162,14 @@ channels, loading and enable modes first.
    bandwidth/clipping. Never assume rising/falling equality.
 6. **Settling/recovery:** event-to-final-entry in a declared error band, remaining
    inside it for the observation/dwell window. Define final value independently
-   of a failing simulation. Insufficient duration/absent settling is invalid.
+    of a failing simulation. `settling_time()` preserves first sampled entry after
+    the last out-of-band sample, not interpolated entry; an unaligned trigger is
+    allowed, but observation end must have an exact real sample. Arrange/verify
+    this sample or define another explicit end before freezing, never adjust end
+    post-run to obtain a pass. Band/dwell equality is inclusive; no implicit
+    epsilon, end interpolation or shortened window. Insufficient duration,
+    unsampled end or absent settling is invalid. Sampling does not prove continuous
+    intersample behavior; retain declared resolution/refinement checks.
 7. **Output swing/drive:** separate source/sink loads, command sweeps, headroom,
    branch-current signs, linear regulation and saturation. Short-circuit data is
    not a guaranteed linear drive limit or open-loop output impedance.
@@ -272,6 +286,13 @@ hash. Runtime imports trusted authored Python; it is not a sandbox for untrusted
 code. Review model and deck sources as local executable simulator input.
 
 ## Parent Handoff and Integration
+
+Runtime fixes do not update exported frozen copies. For affected suites, request
+approved reauthoring into a new version with explicit boundary/estimator policy,
+rerun harness checks, seal once and independently retain the new manifest hash.
+Never patch/reseal a frozen suite during fitting. Changed suite identities require
+fresh architecture approval; historical results remain tied to original hashes
+and affected results require reassessment, not silently upgraded acceptance.
 
 Return suite path/version/manifest hash, target/scope/interface status, test counts
 by readiness/priority/role, coverage, highest-priority blocked gates, extraction
