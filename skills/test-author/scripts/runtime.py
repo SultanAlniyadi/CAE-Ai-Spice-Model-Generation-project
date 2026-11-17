@@ -655,13 +655,18 @@ def seal_suite(root):
     validate_manifest(m, root, verify_hashes=False)
     require(not m["hashes"], "Already sealed: reauthor into a new version instead of resealing")
     m["hashes"] = inventory(root)
-    temporary = root / ".manifest-sealing.tmp"
+    temporary = None
     try:
-        write_json(temporary, m)
+        # Same filesystem for atomic replacement, outside the immutable inventory.
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", prefix=".manifest-sealing-",
+                                         suffix=".tmp", dir=root.parent, delete=False) as stream:
+            temporary = Path(stream.name)  # Cleanup owns only a successfully created file.
+            json.dump(m, stream, indent=2, allow_nan=False)
+            stream.write("\n")
         temporary.replace(manifest)
     finally:
-        if temporary.exists():
-            temporary.unlink()
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     validate_manifest(m, root)
     return digest(manifest)
 

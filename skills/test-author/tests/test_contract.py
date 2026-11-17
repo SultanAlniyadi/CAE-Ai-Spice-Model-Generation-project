@@ -244,6 +244,46 @@ class SuiteTests(unittest.TestCase):
         with self.assertRaises(rt.ContractError):
             rt.validate_manifest(m, self.root)
 
+    def test_sealing_creation_failure_preserves_existing_path(self):
+        temporary = self.parent / ".manifest-sealing-existing.tmp"
+        temporary.write_text("owned by another invocation", encoding="utf-8")
+        original = (self.root / "manifest.json").read_bytes()
+        with patch.object(rt.tempfile, "NamedTemporaryFile", side_effect=FileExistsError(str(temporary))):
+            with self.assertRaises(FileExistsError):
+                rt.seal_suite(self.root)
+        self.assertEqual(temporary.read_text(encoding="utf-8"), "owned by another invocation")
+        self.assertEqual((self.root / "manifest.json").read_bytes(), original)
+
+    def test_sealing_publication_failure_cleans_only_owned_file(self):
+        legacy = self.root / ".manifest-sealing.tmp"
+        legacy.write_text("pre-existing artifact", encoding="utf-8")
+        original = (self.root / "manifest.json").read_bytes()
+        owned = []
+
+        def fail_replace(source, destination):
+            owned.append(source)
+            self.assertEqual(source.parent, self.parent)
+            self.assertNotEqual(source, legacy)
+            self.assertNotIn(source.name, rt.load_json(source)["hashes"])
+            self.assertEqual(destination, self.root / "manifest.json")
+            raise OSError("simulated publication failure")
+
+        with patch.object(Path, "replace", fail_replace):
+            with self.assertRaisesRegex(OSError, "publication failure"):
+                rt.seal_suite(self.root)
+        self.assertEqual(len(owned), 1)
+        self.assertFalse(owned[0].exists())
+        self.assertEqual(legacy.read_text(encoding="utf-8"), "pre-existing artifact")
+        self.assertEqual((self.root / "manifest.json").read_bytes(), original)
+
+    def test_sealing_serialization_failure_cleans_owned_file(self):
+        original = (self.root / "manifest.json").read_bytes()
+        with patch.object(rt.json, "dump", side_effect=ValueError("simulated serialization failure")):
+            with self.assertRaisesRegex(ValueError, "serialization failure"):
+                rt.seal_suite(self.root)
+        self.assertFalse(list(self.parent.glob(".manifest-sealing-*.tmp")))
+        self.assertEqual((self.root / "manifest.json").read_bytes(), original)
+
     def test_changed_bench_hash(self):
         rt.seal_suite(self.root)
         (self.root / "benches" / "test.py").write_text("changed", encoding="utf-8")
@@ -465,7 +505,7 @@ class ProcessTests(unittest.TestCase):
 class AuthoringArtifactTests(unittest.TestCase):
     def test_thin_agent_command_and_canonical_layout(self):
         repository = SCRIPTS.parents[2]
-        agent = (repository / ".mplab-ai" / "agent" / "test-author.md").read_text(encoding="utf-8")
+        agent = (repository / "agents" / "test-author.md").read_text(encoding="utf-8")
         command = (repository / ".mplab-ai" / "command" / "test-author.md").read_text(encoding="utf-8")
         skill = (SCRIPTS.parent / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("mode: subagent", agent)
